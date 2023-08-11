@@ -56,9 +56,9 @@ function _contract_fit(A::MPO, psi0::MPS; init_mps=psi0, nsweeps=1, check_error_
     psi = ITensorTDVP.tdvp(ITensorTDVP.contractmpo_solver(; kwargs...), PH, t, init_mps;
         nsweeps, reverse_step, kwargs...)
     
-    #if check_error_contract
-        #println("error_contract $(error_contract(psi, A, psi0))")
-    #end
+    if check_error_contract
+        println("error_contract $(error_contract(psi, A, psi0; make_inds_match=false))")
+    end
 
     return psi
 end

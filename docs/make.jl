@@ -6,7 +6,7 @@ DocMeta.setdocmeta!(Quantics, :DocTestSetup, :(using Quantics); recursive=true)
 makedocs(;
     modules=[Quantics],
     authors="Hiroshi Shinaoka <h.shinaoka@gmail.com> and contributors",
-    repo="https://github.com/shinaoka/Quantics.jl/blob/{commit}{path}#{line}",
+    repo="https://gitlab.com/tensors4fields/Quantics.jl/blob/{commit}{path}#{line}",
     sitename="Quantics.jl",
     format=Documenter.HTML(;
         prettyurls=get(ENV, "CI", "false") == "true",
