@@ -171,15 +171,7 @@ function automul(M1::MPS, M2::MPS; tag_row::String="", tag_shared::String="",
     M1_, M2_ = preprocess(matmul, M1_, M2_)
     M1_, M2_ = preprocess(ewmul, M1_, M2_)
 
-    if alg == "fit"
-        # Ideally, we want to use fitting algorithm but MPO-MPO contraction is not supported yet.
-        #init = contract(truncate(M1_; cutoff=cutoff_init),
-        #truncate(M2_; cutoff=cutoff_init); alg="naive", kwargs...)
-        #M = Quantics.asMPO(contract(M1_, M2_; alg="fit", init=init, kwargs...))
-        M = Quantics.asMPO(_contract_fit(M1_, M2_; kwargs...))
-    elseif alg == "naive"
-        M = Quantics.asMPO(contract(M1_, M2_; alg="naive", kwargs...))
-    end
+    M = FastMPOContractions.contract_mpo_mpo(M1_, M2_; alg=alg, kwargs...)
 
     M = Quantics.postprocess(matmul, M)
     M = Quantics.postprocess(ewmul, M)

@@ -21,6 +21,8 @@ using TensorCrossInterpolation
 import TensorCrossInterpolation: TensorCI, CachedFunction, TensorCI2
 import TensorCrossInterpolation as TCI
 
+import FastMPOContractions
+
 function __init__()
 end
 
@@ -33,7 +35,6 @@ include("mps.jl")
 include("fouriertransform.jl")
 include("imaginarytime.jl")
 include("transformer.jl")
-include("patch.jl")
 include("grid.jl")
 include("tci.jl")
 
