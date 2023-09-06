@@ -1,0 +1,56 @@
+.script:
+  before_script:
+    - which git || (apt-get update -qq && apt-get install --no-install-recommends -qqqy git)
+    - git config --global url."https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com/".insteadOf "git@gitlab.com:"
+    - git config --global url."https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com/".insteadOf "https://gitlab.com/" --add
+  script:
+    - |
+       julia -e '
+        using Pkg
+        Pkg.Registry.add(
+          RegistrySpec(url = "https://github.com/JuliaRegistries/General.git")
+        )
+        Pkg.Registry.add(
+          RegistrySpec(url = "https://gitlab.com/tensors4fields/tensors4fieldsregistry.git")
+        )'
+    - |
+      julia --project=@. -e '
+        using Pkg
+        Pkg.build()
+        Pkg.test(coverage=true)'
+.coverage:
+  coverage: /Test coverage (\d+\.\d+%)/
+  after_script:
+    - |
+      julia -e '
+        using Pkg
+        Pkg.add("Coverage")
+        using Coverage
+        c, t = get_summary(process_folder())
+        using Printf
+        @printf "Test coverage %.2f%%\n" 100c / t'
+Julia 1.9:
+  image: julia:1.9
+  extends:
+    - .script
+    - .coverage
+pages:
+  image: julia:1.9
+  stage: deploy
+  script:
+    - |
+      julia --project=docs -e '
+        using Pkg
+        Pkg.develop(PackageSpec(path=pwd()))
+        Pkg.instantiate()
+        using Documenter: doctest
+        using Quantics
+        doctest(Quantics)
+        include("docs/make.jl")'
+    - mkdir -p public
+    - mv docs/build public/dev
+  artifacts:
+    paths:
+      - public
+  only:
+    - main
