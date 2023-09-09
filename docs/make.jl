@@ -10,9 +10,7 @@ makedocs(;
     sitename="Quantics.jl",
     format=Documenter.HTML(;
         prettyurls=get(ENV, "CI", "false") == "true",
-        assets=String[],
-    ),
+        assets=String[]),
     pages=[
-        "Home" => "index.md",
-    ],
-)
+        "Home" => "index.md"
+    ])
