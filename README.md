@@ -1,6 +1,7 @@
 # Quantics
 
-[![Build Status](https://github.com/shinaoka/Quantics.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/shinaoka/Quantics.jl/actions/workflows/CI.yml?query=branch%3Amain)
+[![pipeline status](https://gitlab.com/tensors4fields/Quantics.jl/badges/main/pipeline.svg)](https://gitlab.com/tensors4fields/Quantics.jl/-/commits/main)
+
 
 ## Prerequisites
 * ITensors.jl
