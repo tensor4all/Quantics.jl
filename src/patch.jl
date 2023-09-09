@@ -17,7 +17,12 @@ end
 
 # To support MPO-MPO contraction
 # Taken from https://github.com/shinaoka/ITensorTDVP.jl/commit/23e09395cce66215b256aeeaa993fe2c64a0f1c8
-function _contract_fit(A::MPO, psi0::MPS; init_mps=psi0, nsweeps=1, check_error_contract=true, kwargs...)::MPS
+function _contract_fit(A::MPO,
+    psi0::MPS;
+    init_mps=psi0,
+    nsweeps=1,
+    check_error_contract=true,
+    kwargs...)::MPS
     n = length(A)
     n != length(psi0) &&
         throw(DimensionMismatch("lengths of MPO ($n) and MPS ($(length(psi0))) do not match"))
@@ -55,7 +60,7 @@ function _contract_fit(A::MPO, psi0::MPS; init_mps=psi0, nsweeps=1, check_error_
     PH = ITensorTDVP.ProjMPOApply(psi0, A)
     psi = ITensorTDVP.tdvp(ITensorTDVP.contractmpo_solver(; kwargs...), PH, t, init_mps;
         nsweeps, reverse_step, kwargs...)
-    
+
     if check_error_contract
         println("error_contract $(error_contract(psi, A, psi0; make_inds_match=false))")
     end
