@@ -1,8 +1,9 @@
+before_script:
+  - which git || (apt-get update -qq && apt-get install --no-install-recommends -qqqy git)
+  - git config --global url."https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com/".insteadOf "git@gitlab.com:"
+  - git config --global url."https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com/".insteadOf "https://gitlab.com/" --add
+
 .script:
-  before_script:
-    - which git || (apt-get update -qq && apt-get install --no-install-recommends -qqqy git)
-    - git config --global url."https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com/".insteadOf "git@gitlab.com:"
-    - git config --global url."https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com/".insteadOf "https://gitlab.com/" --add
   script:
     - |
        julia -e '
