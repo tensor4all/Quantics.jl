@@ -13,6 +13,10 @@ function _to_ntuple(v::MVector{N,T}) where {N,T}
 end
 
 @testset "quantics.jl" begin
+    @testset "QuanticsInd" begin
+        Quantics.QuanticsInd{2}.([1, 2]) == Quantics.QuanticsInd(Val(2), [1, 2])
+    end
+
     @testset "fused_quantics_to_qubit" begin
         @test fused_quantics_to_qubit(QuanticsInd{2}(1)) == Tuple(QubitInd.((1, 1)))
         @test fused_quantics_to_qubit(QuanticsInd{2}(2)) == Tuple(QubitInd.((2, 1)))

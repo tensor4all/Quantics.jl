@@ -29,6 +29,10 @@ function QuanticsInd{D}(inds::NTuple{D,QubitInd}) where {D}
     return QuanticsInd{D}(i + 1)
 end
 
+function QuanticsInd(::Val{D}, inds::AbstractVector{<:Integer})::Vector{QuanticsInd{D}} where {D}
+    return [QuanticsInd{D}(i) for i in inds]
+end
+
 # Deprecated?
 #function asqubits(inds::NTuple{D,Int}) where {D}
 #return Tuple(QubitInd.(inds))
