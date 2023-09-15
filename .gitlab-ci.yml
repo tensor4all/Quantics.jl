@@ -45,8 +45,8 @@ Julia 1.9:
         Pkg.develop(PackageSpec(path=pwd()))
         Pkg.instantiate()
         using Documenter: doctest
-        using Quantics.jl
-        doctest(Quantics.jl)
+        using Quantics
+        doctest(Quantics)
         include("docs/make.jl")'
 doctest:
   image: julia:1.6
