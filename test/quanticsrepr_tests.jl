@@ -13,7 +13,7 @@ function _to_ntuple(v::MVector{N,T}) where {N,T}
     return v.data
 end
     @testset "QuanticsInd" begin
-        Quantics.QuanticsInd{2}.([1, 2]) == Quantics.QuanticsInd(Val(2), [1, 2])
+        @test Quantics.QuanticsInd{2}.([1, 2]) == Quantics.QuanticsInd(Val(2), [1, 2])
     end
 
     @testset "fused_quantics_to_qubit" begin
