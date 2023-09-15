@@ -149,5 +149,3 @@
         @test ab_arr ≈ ab_arr_reconst
     end
 end
-
-nothing

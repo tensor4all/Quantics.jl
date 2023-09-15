@@ -244,5 +244,3 @@ using LinearAlgebra
         end
     end
 end
-
-nothing

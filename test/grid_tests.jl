@@ -46,4 +46,3 @@ import Quantics
     end
 end
 
-nothing
