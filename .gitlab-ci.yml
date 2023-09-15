@@ -11,7 +11,6 @@ before_script:
       Pkg.Registry.add(
         RegistrySpec(url = "https://gitlab.com/tensors4fields/tensors4fieldsregistry.git")
       )'
-
 .script:
   script:
     - |
@@ -38,7 +37,6 @@ Julia 1.9:
   except:
     changes:
       - "README.md"
-
 .doctest:
   script:
     - |
@@ -54,7 +52,6 @@ doctest:
   image: julia:1.6
   extends:
     - .doctest
-
 pages:
   image: julia:1.6
   stage: deploy
