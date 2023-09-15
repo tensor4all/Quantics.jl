@@ -72,5 +72,3 @@ end
         @test index_to_fused_quantics((3, 4), R) == QuanticsInd{D}.([1, 4, 3])
     end
 end
-
-nothing
