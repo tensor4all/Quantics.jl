@@ -1,3 +1,4 @@
+@testitem "imaginarytime.jl" begin
 using Test
 using Quantics
 import ITensors: siteinds, Index
@@ -23,7 +24,6 @@ function _test_data_imaginarytime(nbit, β)
     return gtau_smpl, giv_smpl
 end
 
-@testset "imaginarytime.jl" begin
     @testset "decompose" begin
         β = 2.0
         nbit = 10

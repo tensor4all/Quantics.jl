@@ -1,3 +1,4 @@
+@testitem "quantics.jl" begin
 using Test
 using ITensors
 using StaticArrays
@@ -11,8 +12,6 @@ import Quantics: qubit_to_index
 function _to_ntuple(v::MVector{N,T}) where {N,T}
     return v.data
 end
-
-@testset "quantics.jl" begin
     @testset "QuanticsInd" begin
         Quantics.QuanticsInd{2}.([1, 2]) == Quantics.QuanticsInd(Val(2), [1, 2])
     end

@@ -2,7 +2,7 @@ using Test
 import Quantics
 using ITensors
 
-@testset "mps.jl" begin
+@testitem "mps.jl" begin
     @testset "onemps" begin
         nbit = 3
         sites = siteinds("Qubit", nbit)

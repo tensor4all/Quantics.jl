@@ -1,7 +1,7 @@
+
+@testitem "grid.jl" begin
 using Test
 import Quantics
-
-@testset "grid.jl" begin
     @testset "DiscreteGrid" begin
         m = Quantics.InherentDiscreteGrid{3}(5)
 

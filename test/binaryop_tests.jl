@@ -4,7 +4,7 @@ ITensors.disable_warn_order()
 using Quantics
 import Random
 
-@testset "binaryop.jl" begin
+@testitem "binaryop.jl" begin
     @testset "_binaryop" for rev_carrydirec in [true], nbit in 2:3
         Random.seed!(1)
         # For a = +/- 1, b = +/- 1, c = +/- 1, d = +/- 1,

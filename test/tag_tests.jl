@@ -1,6 +1,7 @@
-using Test
-import Quantics
-using ITensors
+@testitem begin "tag" begin
+    using Test
+    import Quantics
+    using ITensors
 
 @testset "findallsites_by_tag" for tag in ["x", "y"]
     nbit = 4
@@ -31,4 +32,6 @@ end
     @test_throws "with $(tag)=1!" Quantics.findallsiteinds_by_tag(invalid_sites, tag=tag)
     @test_throws "Invalid tag: $(tag)=" Quantics.findallsiteinds_by_tag(invalid_sites,
         tag="$(tag)=")
+end
+
 end

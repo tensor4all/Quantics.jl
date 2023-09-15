@@ -1,19 +1,18 @@
-using Test
-import Quantics
-using ITensors
+@testitem "mul.jl" begin
+    using Test
+    import Quantics
+    using ITensors
 
-"""
-Reconstruct 3D matrix
-"""
-function _tomat3(a)
-    sites = siteinds(a)
-    N = length(sites)
-    Nreduced = N ÷ 3
-    sites_ = [sites[1:3:N]..., sites[2:3:N]..., sites[3:3:N]...]
-    return reshape(Array(reduce(*, a), sites_), 2^Nreduced, 2^Nreduced, 2^Nreduced)
-end
-
-@testset "mul.jl" begin
+    """
+    Reconstruct 3D matrix
+    """
+    function _tomat3(a)
+        sites = siteinds(a)
+        N = length(sites)
+        Nreduced = N ÷ 3
+        sites_ = [sites[1:3:N]..., sites[2:3:N]..., sites[3:3:N]...]
+        return reshape(Array(reduce(*, a), sites_), 2^Nreduced, 2^Nreduced, 2^Nreduced)
+    end
     @testset "_preprocess_matmul" begin
         N = 2
         sitesx = [Index(2, "x=$n") for n in 1:N]
