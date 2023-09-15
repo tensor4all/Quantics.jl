@@ -1,17 +1,17 @@
 @testitem "quantics.jl" begin
-using Test
-using ITensors
-using StaticArrays
-import Quantics
-import Quantics: QuanticsInd, QubitInd, index_to_fused_quantics
-import Quantics: fused_quantics_to_qubit,
-    qubit_to_fused_quantics, fused_quantics_to_index,
-    index_to_qubit
-import Quantics: qubit_to_index
+    using Test
+    using ITensors
+    using StaticArrays
+    import Quantics
+    import Quantics: QuanticsInd, QubitInd, index_to_fused_quantics
+    import Quantics: fused_quantics_to_qubit,
+        qubit_to_fused_quantics, fused_quantics_to_index,
+        index_to_qubit
+    import Quantics: qubit_to_index
 
-function _to_ntuple(v::MVector{N,T}) where {N,T}
-    return v.data
-end
+    function _to_ntuple(v::MVector{N,T}) where {N,T}
+        return v.data
+    end
     @testset "QuanticsInd" begin
         @test Quantics.QuanticsInd{2}.([1, 2]) == Quantics.QuanticsInd(Val(2), [1, 2])
     end

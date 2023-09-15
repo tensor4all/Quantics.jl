@@ -136,8 +136,8 @@
     push!(affinetransform_testsets, [0 1 1; 0 1 1; 1 0 1])
 
     # x' =      y - z
-    # y' =      y    
-    # z' =  x        
+    # y' =      y
+    # z' =  x
     push!(affinetransform_testsets, [0 1 -1; 0 1 0; 1 0 0])
 
     @testset "affinetransform_three_vars" for rev_carrydirec in [true, false],

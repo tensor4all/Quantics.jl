@@ -1,9 +1,9 @@
 
 @testitem "transformer.jl" begin
-using Test
-import Quantics
-using ITensors
-using LinearAlgebra
+    using Test
+    import Quantics
+    using ITensors
+    using LinearAlgebra
     @testset "upper_lower_triangle" for upper_or_lower in [:upper, :lower]
         R = 3
         sites = siteinds("Qubit", R)

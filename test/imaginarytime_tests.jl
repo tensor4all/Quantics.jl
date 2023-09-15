@@ -1,28 +1,28 @@
 @testitem "imaginarytime.jl" begin
-using Test
-using Quantics
-import ITensors: siteinds, Index
-import ITensors
-import SparseIR: Fermionic, Bosonic, FermionicFreq, valueim
+    using Test
+    using Quantics
+    import ITensors: siteinds, Index
+    import ITensors
+    import SparseIR: Fermionic, Bosonic, FermionicFreq, valueim
 
-function _test_data_imaginarytime(nbit, β)
-    ω = 0.5
-    N = 2^nbit
-    halfN = 2^(nbit - 1)
+    function _test_data_imaginarytime(nbit, β)
+        ω = 0.5
+        N = 2^nbit
+        halfN = 2^(nbit - 1)
 
-    # Tau
-    gtau(τ) = -exp(-ω * τ) / (1 + exp(-ω * β))
-    @assert gtau(0.0) + gtau(β) ≈ -1
-    τs = collect(LinRange(0.0, β, N + 1))[1:(end - 1)]
-    gtau_smpl = Vector{ComplexF64}(gtau.(τs))
+        # Tau
+        gtau(τ) = -exp(-ω * τ) / (1 + exp(-ω * β))
+        @assert gtau(0.0) + gtau(β) ≈ -1
+        τs = collect(LinRange(0.0, β, N + 1))[1:(end - 1)]
+        gtau_smpl = Vector{ComplexF64}(gtau.(τs))
 
-    # Matsubra
-    giv(v::FermionicFreq) = 1 / (valueim(v, β) - ω)
-    vs = FermionicFreq.(2 .* collect((-halfN):(halfN - 1)) .+ 1)
-    giv_smpl = giv.(vs)
+        # Matsubra
+        giv(v::FermionicFreq) = 1 / (valueim(v, β) - ω)
+        vs = FermionicFreq.(2 .* collect((-halfN):(halfN - 1)) .+ 1)
+        giv_smpl = giv.(vs)
 
-    return gtau_smpl, giv_smpl
-end
+        return gtau_smpl, giv_smpl
+    end
 
     @testset "decompose" begin
         β = 2.0
