@@ -1,18 +1,8 @@
-@testitem "mul.jl" begin
+@testitem "test_mul.jl/preprocess_matmul" begin
     using Test
     import Quantics
     using ITensors
 
-    """
-    Reconstruct 3D matrix
-    """
-    function _tomat3(a)
-        sites = siteinds(a)
-        N = length(sites)
-        Nreduced = N ÷ 3
-        sites_ = [sites[1:3:N]..., sites[2:3:N]..., sites[3:3:N]...]
-        return reshape(Array(reduce(*, a), sites_), 2^Nreduced, 2^Nreduced, 2^Nreduced)
-    end
     @testset "_preprocess_matmul" begin
         N = 2
         sitesx = [Index(2, "x=$n") for n in 1:N]
@@ -57,6 +47,12 @@
         end
         @test flag
     end
+end
+
+@testitem "mul_tests.jl/matmul" begin
+    using Test
+    import Quantics
+    using ITensors
 
     @testset "matmul" for T in [Float64, ComplexF64]
         N = 3
@@ -117,6 +113,23 @@
         M2_reconst = Array(reduce(*, M2_), sites)
 
         @test M_reconst ≈ M1_reconst .* M2_reconst
+    end
+end
+
+@testitem "mul_tests.jl/batchedmatmul" begin
+    using Test
+    import Quantics
+    using ITensors
+
+    """
+    Reconstruct 3D matrix
+    """
+    function _tomat3(a)
+        sites = siteinds(a)
+        N = length(sites)
+        Nreduced = N ÷ 3
+        sites_ = [sites[1:3:N]..., sites[2:3:N]..., sites[3:3:N]...]
+        return reshape(Array(reduce(*, a), sites_), 2^Nreduced, 2^Nreduced, 2^Nreduced)
     end
 
     @testset "batchedmatmul" for T in [Float64, ComplexF64]

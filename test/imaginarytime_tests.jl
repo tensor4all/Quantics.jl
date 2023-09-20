@@ -1,4 +1,4 @@
-@testitem "imaginarytime.jl" begin
+@testitem "imaginarytime_tests.jl/imaginarytime" begin
     using Test
     using Quantics
     import ITensors: siteinds, Index
@@ -79,6 +79,14 @@
         @test maximum(abs, (gtau - gtau_smpl)[trunc(Int, 0.2 * nτ):trunc(Int, 0.8 * nτ)]) <
               1e-2
     end
+end
+
+@testitem "imaginarytime_tests.jl/poletomps" begin
+    using Test
+    using Quantics
+    import ITensors: siteinds, Index
+    import ITensors
+    import SparseIR: Fermionic, Bosonic, FermionicFreq, valueim
 
     @testset "poletomps" begin
         nqubit = 10

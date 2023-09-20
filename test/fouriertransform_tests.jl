@@ -1,5 +1,5 @@
 
-@testitem "fouriertransform.jl" begin
+@testitem "fouriertransform_tests.jl/qft_mpo" begin
     using Test
     using Quantics
     using ITensors
@@ -35,6 +35,12 @@
         @test Array(reduce(*, M), vcat(sites, sites')) ≈
               Array(reduce(*, M_ref), vcat(sites, sites'))
     end
+end
+
+@testitem "fouriertransform_tests.jl/fouriertransform" begin
+    using Test
+    using Quantics
+    using ITensors
 
     function _ft_1d_ref(X, sign, originx, origink)
         N = length(X)
