@@ -1,4 +1,4 @@
-@testitem "tag" begin
+@testitem "tag_tests.jl/tag" begin
     using Test
     import Quantics
     using ITensors

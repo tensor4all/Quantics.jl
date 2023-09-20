@@ -1,9 +1,10 @@
 
-@testitem "transformer.jl" begin
+@testitem "transformer_tests.jl/functions" begin
     using Test
     import Quantics
     using ITensors
     using LinearAlgebra
+
     @testset "upper_lower_triangle" for upper_or_lower in [:upper, :lower]
         R = 3
         sites = siteinds("Qubit", R)
@@ -52,6 +53,13 @@
 
         @test f_reconst ≈ f_ref
     end
+end
+
+@testitem "transformer_tests.jl/reverseaxis" begin
+    using Test
+    import Quantics
+    using ITensors
+    using LinearAlgebra
 
     @testset "reverseaxis" for bc in [1], nbit in 2:2, rev_carrydirec in [true, false]
         sitesx = [Index(2, "x=$x") for x in 1:nbit]
@@ -192,6 +200,13 @@
         end
     end
     ==#
+end
+
+@testitem "transformer_tests.jl/shiftaxis" begin
+    using Test
+    import Quantics
+    using ITensors
+    using LinearAlgebra
 
     @testset "shiftaxis" for R in [3], bc in [1, -1], rev_carrydirec in [true, false]
         sitesx = [Index(2, "Qubit, x=$n") for n in 1:R]
