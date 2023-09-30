@@ -1,8 +1,8 @@
-using Test
-import Quantics
-using ITensors
+@testitem "util.jl" begin
+    using Test
+    import Quantics
+    using ITensors
 
-@testset "util.jl" begin
     @testset "_replace_mpo_siteinds!" begin
         nbit = 3
         sites = siteinds("Qubit", nbit)
@@ -168,5 +168,3 @@ using ITensors
         @test M12_reconst ≈ M12_ref
     end
 end
-
-nothing

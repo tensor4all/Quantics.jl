@@ -1,15 +1,19 @@
-using Test
-import Quantics
-using ITensors
-
-@testset "mps.jl" begin
+@testitem "mps_tests.jl/onemps" begin
+    using Test
+    import Quantics
+    using ITensors
     @testset "onemps" begin
         nbit = 3
         sites = siteinds("Qubit", nbit)
         M = Quantics.onemps(Float64, sites)
         @test vec(Array(reduce(*, M), sites)) ≈ ones(2^nbit)
     end
+end
 
+@testitem "mps_tests.jl/expqtt" begin
+    using Test
+    import Quantics
+    using ITensors
     @testset "expqtt" begin
         R = 10
         sites = siteinds("Qubit", 10)

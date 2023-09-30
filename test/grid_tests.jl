@@ -1,7 +1,7 @@
-using Test
-import Quantics
 
-@testset "grid.jl" begin
+@testitem "grid.jl" begin
+    using Test
+    import Quantics
     @testset "DiscreteGrid" begin
         m = Quantics.InherentDiscreteGrid{3}(5)
 
@@ -45,5 +45,3 @@ import Quantics
         end
     end
 end
-
-nothing
