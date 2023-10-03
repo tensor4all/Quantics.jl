@@ -24,6 +24,7 @@
             @test Quantics.origcoord_to_grididx(g, 1.999999 * dx + grid_min) == 2
             @test Quantics.origcoord_to_grididx(g, grid_max - 1e-9 * dx) == 2^R
             @test Quantics.grid_min(g) == (0.1,)
+            @test Quantics.grid_max(g) == (2.0,)
             @test Quantics.grid_step(g) == (0.059375,)
         end
 
@@ -36,7 +37,8 @@
             g = Quantics.DiscretizedGrid{d}(R, grid_min, grid_max)
 
             @test Quantics.grid_min(g) == (0.1, 0.1)
-            @test Quantics.grid_step(g) == dx ≈ (0.059375, 0.059375)
+            @test Quantics.grid_step(g) == dx == (0.059375, 0.059375)
+            @test Quantics.grid_max(g) == (2.0, 2.0)
 
             cs = [
                 0.999999 .* dx .+ grid_min,
