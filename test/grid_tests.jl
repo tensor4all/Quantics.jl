@@ -49,6 +49,13 @@
                 @inferred(Quantics.origcoord_to_grididx(g, c))
                 @test all(Quantics.origcoord_to_grididx(g, c) .== ref)
             end
+
+            @test_throws "Bound Error:" Quantics.origcoord_to_grididx(g, (0.0, 0.0))
+            @test_throws "Bound Error:" Quantics.origcoord_to_grididx(g, (0.0, 1.1))
+            @test_throws "Bound Error:" Quantics.origcoord_to_grididx(g, (1.1, 0.0))
+            @test_throws "Bound Error:" Quantics.origcoord_to_grididx(g, (3.0, 1.1))
+            @test_throws "Bound Error:" Quantics.origcoord_to_grididx(g, (1.1, 3.0))
+            @test_throws "Bound Error:" Quantics.origcoord_to_grididx(g, (3.0, 3.0))
         end
     end
 end
