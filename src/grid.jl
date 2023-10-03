@@ -83,6 +83,7 @@ struct DiscretizedGrid{N} <: Grid
 end
 
 grid_min(g::DiscretizedGrid) = g.grid_min
+grid_max(g::DiscretizedGrid) = g.grid_max
 grid_step(g::DiscretizedGrid) = (g.grid_max .- g.grid_min) ./ (2^g.R)
 
 """
@@ -96,7 +97,7 @@ end
 Convert a coordinate in the original coordinate system to the corresponding grid index
 """
 function origcoord_to_grididx(g::DiscretizedGrid, coordinate::NTuple{N,Float64}) where {N}
-    all(grid_min(g) .<= coordinate .< g.grid_max) ||
+    all(grid_min(g) .<= coordinate .< grid_max(g)) ||
         error("Bound Error: $(coordinate), min=$(grid_min(g)), max=$(grid_max(g))")
     return ((coordinate .- grid_min(g)) ./ grid_step(g) .+ 1) .|> floor .|> Int
 end
