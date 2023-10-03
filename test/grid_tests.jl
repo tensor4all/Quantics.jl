@@ -2,9 +2,9 @@
 @testitem "grid.jl" begin
     using Test
     import Quantics
-    @testset "DiscreteGrid" begin
         m = Quantics.InherentDiscreteGrid{3}(5)
 
+    @testset "InherentDiscreteGrid" begin
         for idx in [(1, 1, 1), (1, 1, 2)]
             c = Quantics.grididx_to_origcoord(m, idx)
             @test Quantics.origcoord_to_grididx(m, c) == idx
