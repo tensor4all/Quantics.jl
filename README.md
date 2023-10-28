@@ -6,6 +6,8 @@ Markdown
 [![coverage report](https://gitlab.com/tensors4fields/Quantics.jl/badges/main/coverage.svg)](https://gitlab.com/tensors4fields/Quantics.jl/-/commits/main)
 
 ## Prerequisites
+* FastMPOContractions
 * ITensors.jl
 * ITensorTDVP.jl
+* SparseIR
 * TensorCrossInterpolation.jl (not public yet)
