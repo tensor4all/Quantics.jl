@@ -24,7 +24,7 @@ function _binaryop_tensor(a::Int, b::Int, site_x::Index{T}, site_y::Index{T},
     cins = cin_on ? [-1, 0, 1] : [0]
     cinsize = length(cins)
     coutsize = cout_on ? 3 : 1
-    tensor = Tensor(Float64, (cinsize, coutsize, 2, 2, 2))
+    tensor = zeros(Float64, (cinsize, coutsize, 2, 2, 2))
     for (idx_cin, cin) in enumerate(cins), y in 0:1, x in 0:1
         res = a * x + b * y + cin
         if res >= 0

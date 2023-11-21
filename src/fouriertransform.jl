@@ -71,7 +71,7 @@ function _qft_wo_norm(sites; cutoff::Float64=1e-14, sign::Int=1)
     M_top = _qft_toplayer(sites; sign=sign)
 
     M = _contract(M_top, M_prev)
-    ITensors.truncate!(M; cutoff=cutoff, sign=sign)
+    ITensors.truncate!(M; cutoff=cutoff)
 
     return M
 end

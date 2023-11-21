@@ -70,36 +70,15 @@ end
 """
 Convert an MPS tensor to an MPO tensor with a diagonal structure
 """
-function _asdiagonal(t, site::Index{T}) where {T<:Number}
+function _asdiagonal(t, site::Index{T})::ITensor where {T<:Number}
     hasinds(t, site') && error("Found $(site')")
-
     links = uniqueinds(inds(t), site)
-
     rawdata = Array(t, links..., site)
-
-    block_inds = Vector{Int}[]
-    for l in links
-        push!(block_inds, [dim(l)])
-    end
-    push!(block_inds, ones(Int, dim(site))) # site
-    push!(block_inds, ones(Int, dim(site))) # site'
-
-    locs = []
+    tensor = zeros(eltype(t), size(rawdata)..., dim(site))
     for i in 1:dim(site)
-        push!(locs, Tuple([ones(Int, length(links))..., i, i]))
+        tensor[.., i, i] = rawdata[.., i]
     end
-    locs = [locs...] # From Vector{Any} to Vector{Tuple{Int,...}}
-
-    b = BlockSparseTensor(eltype(t), locs, block_inds)
-    for i in 1:dim(site)
-        if ndims(rawdata) == 2
-            blockview(b, (1, i, i)) .= rawdata[:, i]
-        else
-            blockview(b, (1, 1, i, i)) .= rawdata[:, :, i]
-        end
-    end
-
-    return ITensor(b, links..., site', site)
+    return ITensor(tensor, links..., site', site)
 end
 
 function _todense(t, site::Index{T}) where {T<:Number}

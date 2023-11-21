@@ -23,6 +23,8 @@ import TensorCrossInterpolation as TCI
 
 import FastMPOContractions
 
+using EllipsisNotation
+
 function __init__()
 end
 
