@@ -78,7 +78,8 @@ pages:
 
 CompatHelper:
   image: julia:1.9 # Set to the Julia version you want to use
-  stage: build # You can place this in any stage that makes sense for your setup
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
   script:
     - |
       julia --color=yes -e "
