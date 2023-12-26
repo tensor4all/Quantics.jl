@@ -75,3 +75,19 @@ pages:
       - public
   only:
     - main
+
+CompatHelper:
+  image: julia:1.9 # Set to the Julia version you want to use
+  stage: build # You can place this in any stage that makes sense for your setup
+  script:
+    - |
+      julia --color=yes -e "
+        import Pkg;
+        name = \"CompatHelper\";
+        uuid = \"aa819f21-2bde-4658-8897-bab36330d9b7\";
+        version = \"3\";
+        Pkg.add(; name, uuid, version)"
+    - |
+      julia --color=yes -e "
+        import CompatHelper;
+        CompatHelper.main(;use_existing_registries=true)"
