@@ -50,7 +50,6 @@ Julia test:
   parallel:
     matrix:
       - JULIA_VERSION:
-        - "1.6"
         - "1.9"
         - "1" # latest stable version
 .doctest:
