@@ -1,6 +1,5 @@
 function TCItoMPS(tci::Union{TensorCI{T},TensorCI2{T}}, sites=nothing) where {T}
     tensors = TCI.tensortrain(tci)
-    ranks = TCI.rank(tci)
     N = length(tensors)
     localdims = [size(t, 2) for t in tensors]
 
@@ -8,7 +7,7 @@ function TCItoMPS(tci::Union{TensorCI{T},TensorCI2{T}}, sites=nothing) where {T}
         sites = [Index(localdims[n], "n=$n") for n in 1:N]
     else
         all(localdims .== dim.(sites)) ||
-            error("ranks are not consistent with dimension of sites")
+            error("lcaoldims are not consistent with dimension of sites")
     end
 
     linkdims = [[size(t, 1) for t in tensors]..., 1]
