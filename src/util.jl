@@ -98,7 +98,7 @@ function unfuse_siteinds(M::MPS, targetsites::Vector{Index{T}},
     links = linkinds(M)
     L = length(M)
 
-    tensors = Union{ITensor,Vector{ITensor}}[M[n] for n in eachindex(M)]
+    tensors = Union{ITensor,Vector{ITensor}}[deepcopy(M[n]) for n in eachindex(M)]
     for n in 1:length(targetsites)
         pos = findsite(M, targetsites[n])
         !isnothing(pos) || error("Target site not found: $(targetsites[n])")
