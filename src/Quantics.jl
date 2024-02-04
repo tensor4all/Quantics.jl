@@ -17,8 +17,6 @@ import SparseIR: Fermionic, Bosonic, Statistics
 import LinearAlgebra: I
 using StaticArrays
 
-import FastMPOContractions
-
 using EllipsisNotation
 
 function __init__()
