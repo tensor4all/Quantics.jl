@@ -6,7 +6,7 @@
     @testset "_replace_mpo_siteinds!" begin
         nbit = 3
         sites = siteinds("Qubit", nbit)
-        M = MPO(sites, ["Y" for n in 1:nbit])
+        M = MPO(ComplexF64, sites, ["Y" for n in 1:nbit])
 
         sites2 = [Index(2, "n=$n") for n in 1:nbit]
         Quantics._replace_mpo_siteinds!(M, sites, sites2)
