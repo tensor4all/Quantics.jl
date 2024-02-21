@@ -11,7 +11,6 @@ module Quantics
 using ITensors
 import ITensors
 import ITensors.NDTensors: Tensor, BlockSparseTensor, blockview
-using ITensorTDVP
 
 import SparseIR: Fermionic, Bosonic, Statistics
 import LinearAlgebra: I
