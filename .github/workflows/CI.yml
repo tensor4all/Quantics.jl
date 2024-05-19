@@ -2,7 +2,7 @@ name: CI
 on:
   push:
     branches:
-      - main
+      - '**'
   pull_request:
     branches:
       - main
@@ -33,6 +33,13 @@ jobs:
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
+      - name: Add Julia Registries
+        run: |
+          julia -e '
+          using Pkg
+          Pkg.Registry.add(
+            RegistrySpec(url = "https://github.com/tensor4all/T4ARegistry.git")
+          )'
       - uses: julia-actions/cache@v1
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
@@ -47,6 +54,13 @@ jobs:
       - uses: julia-actions/setup-julia@v2
         with:
           version: '1'
+      - name: Add Julia Registries
+        run: |
+          julia -e '
+          using Pkg
+          Pkg.Registry.add(
+            RegistrySpec(url = "https://github.com/tensor4all/T4ARegistry.git")
+          )'
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-docdeploy@v1
         env:
