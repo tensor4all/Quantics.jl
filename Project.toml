@@ -14,7 +14,7 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 [compat]
 EllipsisNotation = "1"
 FastMPOContractions = "^0.2.1"
-ITensors = "^0.3.42"
+ITensors = "^0.3.42, 0.6"
 SparseIR = "^0.96, 0.97, 1"
 StaticArrays = "1"
 julia = "1"
