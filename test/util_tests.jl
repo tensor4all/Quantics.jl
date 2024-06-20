@@ -167,4 +167,26 @@
 
         @test M12_reconst ≈ M12_ref
     end
+
+    @testset "rearrange_siteinds" begin
+        L = 5
+        sitesx = [Index(2, "x=$n") for n in 1:L]
+        sitesy = [Index(2, "y=$n") for n in 1:L]
+
+        sitesxy = collect(Iterators.flatten(zip(sitesx, sitesy)))
+
+        Ψ = random_mps(sitesxy)
+
+        sitesxy_fused = [[x, y] for (x, y) in zip(sitesx, sitesy)]
+
+        Ψ_fused = Quantics.rearrange_siteinds(Ψ, sitesxy_fused)
+
+        @test prod(Ψ) ≈ prod(Ψ_fused)
+
+        sitesxy_fused_ = siteinds(MPO(collect(Ψ_fused)))
+
+        for (x, y) in zip(sitesxy_fused, sitesxy_fused_)
+            @test Set(x) == Set(y)
+        end
+    end
 end

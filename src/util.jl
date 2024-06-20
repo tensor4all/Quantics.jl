@@ -213,6 +213,7 @@ function cleanup_linkinds!(M)
             replaceind!(M[n], links_old[n - 1], links_new[n - 1])
         end
     end
+    M
 end
 
 """
@@ -431,4 +432,45 @@ function _directprod(M1::MPS, Mx::MPS...)::MPS
     else
         return _directprod(M12, Mx[2:end]...)
     end
+end
+
+function rearrange_siteinds(M::MPS, sites::Vector{Vector{Index{T}}})::MPS where {T}
+    sitesold = siteinds(MPO(collect(M)))
+
+    Set(Iterators.flatten(sites)) == Set(Iterators.flatten(sitesold)) || error("siteinds do not match")
+
+    t = ITensor(1)
+    tensors = Vector{ITensor}(undef, length(sites))
+    tensors_old = collect(M)
+    for (i, site) in enumerate(sites)
+        for ind in site
+            if ind ∈ inds(t)
+                continue
+            end
+            contract_until = findfirst(x->ind ∈ Set(collect(x)), inds.(tensors_old))
+            contract_until !== nothing || error("ind $ind not found")
+            for j in 1:contract_until
+                t *= tensors_old[j]
+            end
+            for _ in 1:contract_until
+                popfirst!(tensors_old)
+            end
+        end
+
+        #l = (i == 1 ? ITensor[] : [only(commoninds(t, tensors[i-1]))])
+
+        linds = 
+        if i > 1
+            vcat(only(commoninds(t, tensors[i-1])), sites[i])
+        else
+            sites[i]
+        end
+        tensors[i], t = split_tensor(
+                t,
+                [linds,
+                uniqueinds(inds(t), linds)]
+            )
+    end
+    tensors[end] *= t
+    cleanup_linkinds!(MPS(tensors))
 end
