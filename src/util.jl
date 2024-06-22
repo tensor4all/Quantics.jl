@@ -437,7 +437,7 @@ end
 function rearrange_siteinds(M::MPS, sites::Vector{Vector{Index{T}}})::MPS where {T}
     sitesold = siteinds(MPO(collect(M)))
 
-    Set(Iterators.flatten(sites)) == Set(Iterators.flatten(sitesold)) || error("siteinds do not match")
+    Set(Iterators.flatten(sites)) == Set(Iterators.flatten(sitesold)) || error("siteinds do not match $(sites) != $(sitesold)")
 
     t = ITensor(1)
     tensors = Vector{ITensor}(undef, length(sites))
@@ -457,19 +457,13 @@ function rearrange_siteinds(M::MPS, sites::Vector{Vector{Index{T}}})::MPS where 
             end
         end
 
-        #l = (i == 1 ? ITensor[] : [only(commoninds(t, tensors[i-1]))])
-
         linds = 
         if i > 1
             vcat(only(commoninds(t, tensors[i-1])), sites[i])
         else
             sites[i]
         end
-        tensors[i], t = split_tensor(
-                t,
-                [linds,
-                uniqueinds(inds(t), linds)]
-            )
+        tensors[i], t, _ = qr(t, linds)
     end
     tensors[end] *= t
     cleanup_linkinds!(MPS(tensors))

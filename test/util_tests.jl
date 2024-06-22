@@ -168,7 +168,7 @@
         @test M12_reconst ≈ M12_ref
     end
 
-    @testset "rearrange_siteinds" begin
+    @testset "rearrange_siteinds (xy)" begin
         L = 5
         sitesx = [Index(2, "x=$n") for n in 1:L]
         sitesy = [Index(2, "y=$n") for n in 1:L]
@@ -181,12 +181,48 @@
 
         Ψ_fused = Quantics.rearrange_siteinds(Ψ, sitesxy_fused)
 
-        @test prod(Ψ) ≈ prod(Ψ_fused)
+        @test prod(Ψ) ≈ prod(Ψ_fused) # We reconstruct a full tensor, do not use it for large L
 
         sitesxy_fused_ = siteinds(MPO(collect(Ψ_fused)))
 
         for (x, y) in zip(sitesxy_fused, sitesxy_fused_)
             @test Set(x) == Set(y)
         end
+
+        Ψ_reconst = Quantics.rearrange_siteinds(Ψ_fused, [[x] for x in sitesxy])
+
+        @test Ψ ≈ Ψ_reconst
+    end
+
+    @testset "rearrange_siteinds (xyz)" begin
+        L = 4
+        sitesx = [Index(2, "x=$n") for n in 1:L]
+        sitesy = [Index(2, "y=$n") for n in 1:L]
+        sitesz = [Index(2, "z=$n") for n in 1:L]
+
+        sitesxyz = collect(Iterators.flatten(zip(sitesx, sitesy, sitesz)))
+
+        Ψ = random_mps(sitesxyz)
+
+        sitesxyz_fused = Vector{Index{Int}}[]
+        for i in 1:L
+            push!(sitesxyz_fused, [sitesx[i], sitesy[i]])
+            push!(sitesxyz_fused, [sitesz[i]])
+        end
+
+        Ψ_fused = Quantics.rearrange_siteinds(Ψ, sitesxyz_fused)
+
+        @test prod(Ψ) ≈ prod(Ψ_fused)
+
+        sitesxyz_fused_ = siteinds(MPO(collect(Ψ_fused)))
+
+        for (x, y) in zip(sitesxyz_fused, sitesxyz_fused_)
+            @test Set(x) == Set(y)
+        end
+
+        Ψ_reconst = Quantics.rearrange_siteinds(Ψ_fused, [[x] for x in sitesxyz])
+
+        @test Ψ ≈ Ψ_reconst
     end
 end
+nothing
