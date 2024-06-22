@@ -50,7 +50,7 @@ function findallsites_by_tag(sites::Vector{Vector{Index{T}}}; tag::String="x",
     sitesflatten = collect(Iterators.flatten(sites))
     for n in 1:maxnsites
         tag_ = tag * "=$n"
-        idx = findall(hastags(tag_), sitesflatten)
+        idx = findall(i -> hastags(i, tag_) && hasplev(i, 0), sitesflatten)
         if length(idx) == 0
             break
         elseif length(idx) > 1

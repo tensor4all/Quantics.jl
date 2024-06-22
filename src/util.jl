@@ -495,3 +495,31 @@ function makesitediagonal(M::AbstractMPS, tag::String)::MPS
 
     return MPS(collect(M_))
 end
+
+"""
+Extract diagonal components
+"""
+function extractdiagonal(M::AbstractMPS, tag::String)::MPS
+    M_ = deepcopy(MPO(collect(M)))
+    sites = siteinds(M_)
+
+    target_positions = findallsites_by_tag(siteinds(M_); tag=tag)
+
+    for t in eachindex(target_positions)
+        i, j = target_positions[t]
+        M_[i] = _extract_diagonal(M_[i], sites[i][j], sites[i][j]')
+    end
+
+    return MPS(collect(M_))
+end
+
+function _extract_diagonal(t, site::Index{T}, site2::Index{T}) where {T<:Number}
+    dim(site) == dim(site2) || error("Dimension mismatch")
+    restinds = uniqueinds(inds(t), site, site2)
+    newdata = zeros(eltype(t), dim.(restinds)..., dim(site))
+    olddata = Array(t, restinds..., site, site2)
+    for i in 1:dim(site)
+        newdata[.., i] = olddata[.., i, i]
+    end
+    return ITensor(newdata, restinds..., site)
+end
