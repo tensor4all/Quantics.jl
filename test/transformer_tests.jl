@@ -76,6 +76,8 @@ end
             f_ref[i] = g_reconst[mod(2^nbit - (i - 1), 2^nbit) + 1]
         end
         f_ref[1] *= bc
+
+        @test f_reconst ≈ f_ref
     end
 
     @testset "reverseaxis2" for nbit in 2:3, rev_carrydirec in [true, false]

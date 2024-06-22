@@ -209,13 +209,13 @@ Instead of specifying `sitessrc`, one can specify the source sites by setting `t
 If `tag` = `x`, all sites with tags `x=1`, `x=2`, ... are used as `sitessrc`.
 """
 function fouriertransform(M::MPS;
-    sign::Int=1,
-    tag::String="",
-    sitessrc=nothing,
-    sitesdst=nothing,
-    originsrc::Float64=0.0,
-    origindst::Float64=0.0,
-    cutoff_MPO=1e-25, kwargs...)
+        sign::Int=1,
+        tag::String="",
+        sitessrc=nothing,
+        sitesdst=nothing,
+        originsrc::Float64=0.0,
+        origindst::Float64=0.0,
+        cutoff_MPO=1e-25, kwargs...)
     sites = siteinds(M)
     sitepos, target_sites = _find_target_sites(M; sitessrc=sitessrc, tag=tag)
 

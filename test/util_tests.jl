@@ -224,4 +224,25 @@
 
         @test Ψ ≈ Ψ_reconst
     end
+
+    @testset "makesitediagonal" begin
+        L = 2
+
+        sitesx = [Index(2, "x=$n") for n in 1:L]
+
+        Ψ = random_mps(sitesx)
+
+        M = Quantics.makesitediagonal(Ψ, "x")
+
+        Ψ_recost = Array(prod(Ψ), sitesx...)
+        M_recost = Array(prod(M), prime.(sitesx)..., sitesx...)
+
+        for i in 1:2, i2 in 1:2, j in 1:2, j2 in 1:2
+            if i != i2 || j != j2
+                @test M_recost[i, j, i2, j2] ≈ 0.0
+            else
+                @test M_recost[i, j, i2, j2] ≈ Ψ_recost[i, j]
+            end
+        end
+    end
 end

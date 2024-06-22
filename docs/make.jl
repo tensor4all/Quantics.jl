@@ -12,10 +12,10 @@ makedocs(;
         edit_link="main",
         assets=String[]),
     pages=[
-        "Home" => "index.md",
+        "Home" => "index.md"
     ])
 
 deploydocs(;
     repo="github.com/tensor4all/Quantics.jl.git",
-    devbranch="main",
+    devbranch="main"
 )
