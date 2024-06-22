@@ -14,8 +14,8 @@
   ``T_{x, y, \mathrm{out}, \mathrm{cin}, \mathrm{cout}} = 1`` if ``a  x + b  y + \mathrm{cin} = \mathrm{cout}``, ``=0`` otherwise (`out` is the output bit).
 """
 function _binaryop_tensor(a::Int, b::Int, site_x::Index{T}, site_y::Index{T},
-    site_out::Index{T},
-    cin_on::Bool, cout_on::Bool, bc::Int) where {T}
+        site_out::Index{T},
+        cin_on::Bool, cout_on::Bool, bc::Int) where {T}
     abs(a) <= 1 || error("a must be either 0, 1, -1")
     abs(b) <= 1 || error("b must be either 0, 1, -1")
     abs(bc) == 1 || error("bc must be either 1, -1")
@@ -47,11 +47,11 @@ end
 Create a tensor acting on a vector of sites.
 """
 function binaryop_tensor_multisite(sites::Vector{Index{T}},
-    coeffs::Vector{Tuple{Int,Int}},
-    pos_sites_in::Vector{Tuple{Int,Int}},
-    cin_on::Bool,
-    cout_on::Bool,
-    bc::Vector{Int}) where {T<:Number}
+        coeffs::Vector{Tuple{Int,Int}},
+        pos_sites_in::Vector{Tuple{Int,Int}},
+        cin_on::Bool,
+        cout_on::Bool,
+        bc::Vector{Int}) where {T<:Number}
 
     # Check
     sites = noprime.(sites)
@@ -122,11 +122,11 @@ where a, b, c, d = +/- 1, 0, and s1, s1 are arbitrary integers.
 `bc` is a vector of boundary conditions for each arguments of `g` (not of `f`).
 """
 function affinetransform(M::MPS,
-    tags::AbstractVector{String},
-    coeffs_dic::AbstractVector{Dict{String,Int}},
-    shift::AbstractVector{Int},
-    bc::AbstractVector{Int};
-    kwargs...)
+        tags::AbstractVector{String},
+        coeffs_dic::AbstractVector{Dict{String,Int}},
+        shift::AbstractVector{Int},
+        bc::AbstractVector{Int};
+        kwargs...)
     # f(x, y) = g(a * x + b * y + s1, c * x + d * y + s2)
     #         = h(a * x + b * y,      c * x + d * y),
     # where h(x, y) = g(x + s1, y + s2).
@@ -164,10 +164,10 @@ end
 
 # Version without shift
 function affinetransform(M::MPS,
-    tags::AbstractVector{String},
-    coeffs_dic::AbstractVector{Dict{String,Int}},
-    bc::AbstractVector{Int};
-    kwargs...)
+        tags::AbstractVector{String},
+        coeffs_dic::AbstractVector{Dict{String,Int}},
+        bc::AbstractVector{Int};
+        kwargs...)
 
     # f(x, y) = g(a * x + b * y + s1, c * x + d * y + s2)
     #         = h(a * x + b * y,      c * x + d * y),
@@ -297,10 +297,10 @@ f(x_R, y_R, ..., x_1, y_1) = M(x_R, y_R, ...; x'_R, y'_R, ...) f(x'_R, y'_R, ...
 `bc` is a vector of boundary conditions for each arguments of `g` (not of `f`).
 """
 function _binaryop_mpo(sites::Vector{Index{T}},
-    coeffs::Vector{Tuple{Int,Int}},
-    pos_sites_in::Vector{Tuple{Int,Int}};
-    rev_carrydirec=false,
-    bc::Union{Nothing,Vector{Int}}=nothing) where {T<:Number}
+        coeffs::Vector{Tuple{Int,Int}},
+        pos_sites_in::Vector{Tuple{Int,Int}};
+        rev_carrydirec=false,
+        bc::Union{Nothing,Vector{Int}}=nothing) where {T<:Number}
     # Number of variables involved in transformation
     nsites_bop = length(coeffs)
 
@@ -336,10 +336,10 @@ end
 
 # Limitation: a = -1 and b = -1 not supported. The same applies to (c, d).
 function _binaryop_mpo_backend(sites::Vector{Index{T}},
-    coeffs::Vector{Tuple{Int,Int}},
-    pos_sites_in::Vector{Tuple{Int,Int}};
-    rev_carrydirec=false,
-    bc::Union{Nothing,Vector{Int}}=nothing) where {T<:Number}
+        coeffs::Vector{Tuple{Int,Int}},
+        pos_sites_in::Vector{Tuple{Int,Int}};
+        rev_carrydirec=false,
+        bc::Union{Nothing,Vector{Int}}=nothing) where {T<:Number}
     nsites = length(sites)
     nsites_bop = length(coeffs)
     ncsites = nsites ÷ nsites_bop

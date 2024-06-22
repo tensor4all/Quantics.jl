@@ -93,7 +93,7 @@ new_sites: Vector of vectors of new siteinds
 When splitting MPS tensors, the column major is assumed.
 """
 function unfuse_siteinds(M::MPS, targetsites::Vector{Index{T}},
-    newsites::AbstractVector{Vector{Index{T}}})::MPS where {T}
+        newsites::AbstractVector{Vector{Index{T}}})::MPS where {T}
     length(targetsites) == length(newsites) || error("Length mismatch")
     links = linkinds(M)
     L = length(M)
@@ -437,7 +437,8 @@ end
 function rearrange_siteinds(M::AbstractMPS, sites::Vector{Vector{Index{T}}})::MPS where {T}
     sitesold = siteinds(MPO(collect(M)))
 
-    Set(Iterators.flatten(sites)) == Set(Iterators.flatten(sitesold)) || error("siteinds do not match $(sites) != $(sitesold)")
+    Set(Iterators.flatten(sites)) == Set(Iterators.flatten(sitesold)) ||
+        error("siteinds do not match $(sites) != $(sitesold)")
 
     t = ITensor(1)
     tensors = Vector{ITensor}(undef, length(sites))
@@ -447,7 +448,7 @@ function rearrange_siteinds(M::AbstractMPS, sites::Vector{Vector{Index{T}}})::MP
             if ind ∈ inds(t)
                 continue
             end
-            contract_until = findfirst(x->ind ∈ Set(collect(x)), inds.(tensors_old))
+            contract_until = findfirst(x -> ind ∈ Set(collect(x)), inds.(tensors_old))
             contract_until !== nothing || error("ind $ind not found")
             for j in 1:contract_until
                 t *= tensors_old[j]
@@ -457,9 +458,8 @@ function rearrange_siteinds(M::AbstractMPS, sites::Vector{Vector{Index{T}}})::MP
             end
         end
 
-        linds = 
-        if i > 1
-            vcat(only(commoninds(t, tensors[i-1])), sites[i])
+        linds = if i > 1
+            vcat(only(commoninds(t, tensors[i - 1])), sites[i])
         else
             sites[i]
         end
@@ -467,4 +467,31 @@ function rearrange_siteinds(M::AbstractMPS, sites::Vector{Vector{Index{T}}})::MP
     end
     tensors[end] *= t
     cleanup_linkinds!(MPS(tensors))
+end
+
+"""
+Makes an MPS/MPO diagonal for a specified a site index `s`.
+On return, the data will be deep copied and the target core tensor will be diagonalized with an additional site index `s'`.
+"""
+function makesitediagonal(M::AbstractMPS, site::Index{T})::MPS where {T}
+    M_ = deepcopy(MPO(collect(M)))
+
+    target_site::Int = only(findsites(M_, site))
+    M_[target_site] = _asdiagonal(M_[target_site], site)
+
+    return MPS(collect(M_))
+end
+
+function makesitediagonal(M::AbstractMPS, tag::String)::MPS
+    M_ = deepcopy(MPO(collect(M)))
+    sites = siteinds(M_)
+
+    target_positions = findallsites_by_tag(siteinds(M_); tag=tag)
+
+    for t in eachindex(target_positions)
+        i, j = target_positions[t]
+        M_[i] = _asdiagonal(M_[i], sites[i][j])
+    end
+
+    return MPS(collect(M_))
 end

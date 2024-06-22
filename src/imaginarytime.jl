@@ -17,7 +17,7 @@ _stat_sign(::Fermionic) = -1
 _stat_sign(::Bosonic) = 1
 
 function to_wn(stat::Statistics, gtau::MPS, beta::Float64; sitessrc=nothing, tag="",
-    sitesdst=nothing, kwargs...)::MPS
+        sitesdst=nothing, kwargs...)::MPS
     sitepos, _ = _find_target_sites(gtau; sitessrc=sitessrc, tag=tag)
     nqbit_t = length(sitepos)
     originwn = 0.5 * (-2.0^nqbit_t + _stat_shift(stat))
@@ -28,7 +28,7 @@ function to_wn(stat::Statistics, gtau::MPS, beta::Float64; sitessrc=nothing, tag
 end
 
 function to_tau(stat::Statistics, giv::MPS, beta::Float64; sitessrc=nothing, tag="",
-    sitesdst=nothing, kwargs...)::MPS
+        sitesdst=nothing, kwargs...)::MPS
     sitepos, _ = _find_target_sites(giv; sitessrc=sitessrc, tag=tag)
     nqbit_t = length(sitepos)
     originwn = 0.5 * (-2.0^nqbit_t + _stat_shift(stat))

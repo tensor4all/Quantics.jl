@@ -19,7 +19,7 @@ f(x) = g(-x)
 where f(x) = M * g(x) for x = 0, 1, ..., 2^R-1.
 """
 function flipop_to_negativedomain(sites::Vector{Index{T}}; rev_carrydirec=false,
-    bc::Int=1)::MPO where {T}
+        bc::Int=1)::MPO where {T}
     return flipop(sites; rev_carrydirec=rev_carrydirec, bc=bc) * bc
 end
 
@@ -146,7 +146,7 @@ end
 Create QTT for a upper/lower triangle matrix filled with one except the diagonal line
 """
 function upper_lower_triangle_matrix(sites::Vector{Index{T}}, value::S;
-    upper_or_lower::Symbol=:upper)::MPO where {T,S}
+        upper_or_lower::Symbol=:upper)::MPO where {T,S}
     upper_or_lower ∈ [:upper, :lower] || error("Invalid upper_or_lower $(upper_or_lower)")
     N = length(sites)
 
