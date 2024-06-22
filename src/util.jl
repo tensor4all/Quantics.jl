@@ -434,7 +434,7 @@ function _directprod(M1::MPS, Mx::MPS...)::MPS
     end
 end
 
-function rearrange_siteinds(M::MPS, sites::Vector{Vector{Index{T}}})::MPS where {T}
+function rearrange_siteinds(M::AbstractMPS, sites::Vector{Vector{Index{T}}})::MPS where {T}
     sitesold = siteinds(MPO(collect(M)))
 
     Set(Iterators.flatten(sites)) == Set(Iterators.flatten(sitesold)) || error("siteinds do not match $(sites) != $(sitesold)")
