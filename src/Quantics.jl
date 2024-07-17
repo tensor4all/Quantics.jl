@@ -17,6 +17,7 @@ import LinearAlgebra: I
 using StaticArrays
 
 import FastMPOContractions
+import ITensorTDVP
 
 using EllipsisNotation
 
@@ -24,6 +25,7 @@ function __init__()
 end
 
 include("util.jl")
+include("sum.jl")
 include("tag.jl")
 include("binaryop.jl")
 include("mul.jl")
