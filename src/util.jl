@@ -380,6 +380,10 @@ function directprod(::Type{T}, sites, indices) where {T}
 end
 
 function _find_target_sites(M::MPS; sitessrc=nothing, tag="")
+    _find_target_sites(siteinds(M); sitessrc, tag)
+end
+
+function _find_target_sites(sites::AbstractVector{Index{T}}; sitessrc=nothing, tag="") where {T}
     if tag == "" && sitessrc === nothing
         error("tag or sitesrc must be specified")
     elseif tag != "" && sitessrc !== nothing
@@ -388,12 +392,11 @@ function _find_target_sites(M::MPS; sitessrc=nothing, tag="")
 
     # Set input site indices
     if tag != ""
-        sites = siteinds(M)
         sitepos = findallsites_by_tag(sites; tag=tag)
         target_sites = [sites[p] for p in sitepos]
     elseif sitessrc !== nothing
         target_sites = sitessrc
-        sitepos = Int[findsite(M, s) for s in sitessrc]
+        sitepos = Int[findfirst(x->x==s, sites) for s in sitessrc]
     end
 
     return sitepos, target_sites
