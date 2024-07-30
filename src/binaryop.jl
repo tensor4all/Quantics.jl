@@ -134,6 +134,7 @@ function affinetransform(M::MPS,
 
     # Number of variables involved in transformation
     ntransvars = length(tags)
+    sites_b = siteinds(M)
 
     2 <= ntransvars ||
         error("Number of variables for transformation must be greater than or equal to 2.")
@@ -159,7 +160,10 @@ function affinetransform(M::MPS,
     end
 
     # Followed by a rotation
-    return affinetransform(M, tags, coeffs_dic, bc; kwargs...)
+    r = affinetransform(M, tags, coeffs_dic, bc; kwargs...)
+    sites_a = siteinds(M)
+    @assert sites_a == sites_b
+    return r
 end
 
 # Version without shift
@@ -168,6 +172,20 @@ function affinetransform(M::MPS,
         coeffs_dic::AbstractVector{Dict{String,Int}},
         bc::AbstractVector{Int};
         kwargs...)
+    transformer = affinetransformmpo(siteinds(M), tags, coeffs_dic, bc)
+    return apply(transformer, M; kwargs...)
+end
+
+
+"""
+Generate an MPO representing an affine transform of a MPS with not shift
+Significant bits are assumed to be aligned from left to right for all tags.
+"""
+function affinetransformmpo(sites::AbstractVector{Index{T}},
+        tags::AbstractVector{String},
+        coeffs_dic::AbstractVector{Dict{String,Int}},
+        bc::AbstractVector{Int})::MPO where {T}
+    mpos = MPO[]
 
     # f(x, y) = g(a * x + b * y + s1, c * x + d * y + s2)
     #         = h(a * x + b * y,      c * x + d * y),
@@ -182,7 +200,7 @@ function affinetransform(M::MPS,
 
     sites_for_tag = []
     for tag in tags
-        push!(sites_for_tag, findallsites_by_tag(siteinds(M); tag=tag))
+        push!(sites_for_tag, findallsites_by_tag(sites; tag=tag))
         if length(sites_for_tag[end]) == 0
             error("Tag $tag is not found.")
         end
@@ -214,7 +232,6 @@ function affinetransform(M::MPS,
     length(pos_sites_in) == ntransvars ||
         error("Length of pos_sites_in does not match that of coeffs")
 
-    sites = siteinds(M)
 
     # Check if the order of significant bits is consistent among all tags
     rev_carrydirecs = Bool[]
@@ -227,22 +244,11 @@ function affinetransform(M::MPS,
         push!(pos_for_tags, pos_for_tag)
     end
 
-    valid_rev_carrydirecs = all(rev_carrydirecs .== true) || all(rev_carrydirecs .== false)
-    valid_rev_carrydirecs ||
-        error("The order of significant bits must be consistent among all tags!")
+    all(rev_carrydirecs .== true) ||
+        error("Significant bits are aligned from left to right for all tags!")
 
     length(unique([length(s) for s in sites_for_tags])) == 1 ||
         error("The number of sites for each tag must be the same! $([length(s) for s in sites_for_tags])")
-
-    rev_carrydirec = all(rev_carrydirecs .== true) # If true, significant bits are at the left end.
-
-    if !rev_carrydirec
-        M_ = MPS([M[i] for i in length(M):-1:1]) # Reverse the order of sites
-        M_ = affinetransform(M_, reverse(tags), reverse(coeffs_dic), reverse(bc); kwargs...)
-        return MPS([M_[i] for i in length(M_):-1:1])
-    end
-
-    # Below, we assume rev_carrydirec = true (left significant bits are at the left end) 
 
     # First check transformations with -1 and -1; e.g., (a, b) = (-1, -1)
     # These transformations are not supported in the backend.
@@ -254,7 +260,7 @@ function affinetransform(M::MPS,
 
     for v in 1:ntransvars
         if sign_flips[v]
-            M = bc[v] * reverseaxis(M; tag=tags[v], bc=bc[v], kwargs...)
+            push!(mpos, bc[v] * reverseaxismpo(sites; tag=tags[v], bc=bc[v]))
         end
     end
 
@@ -265,9 +271,16 @@ function affinetransform(M::MPS,
     transformer = _binaryop_mpo(sites_mpo, coeffs_positive, pos_sites_in;
         rev_carrydirec=true, bc=bc)
     transformer = matchsiteinds(transformer, sites)
-    M = apply(transformer, M; kwargs...)
 
-    return M
+    push!(mpos, transformer)
+
+    # Contract MPOs
+    res = mpos[1]
+    for n in 2:length(mpos)
+        res = apply(mpos[n], res; cutoff=1e-25, maxdim=typemax(Int))
+    end
+
+    return res
 end
 
 """
