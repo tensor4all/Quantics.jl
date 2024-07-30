@@ -166,7 +166,11 @@ function affinetransform(M::MPS,
     return r
 end
 
-# Version without shift
+
+"""
+Affine transform of a MPS with no shift
+Significant bits are assumed to be aligned from left to right for all tags.
+"""
 function affinetransform(M::MPS,
         tags::AbstractVector{String},
         coeffs_dic::AbstractVector{Dict{String,Int}},
@@ -178,7 +182,7 @@ end
 
 
 """
-Generate an MPO representing an affine transform of a MPS with not shift
+Generate an MPO representing an affine transform of a MPS with no shift
 Significant bits are assumed to be aligned from left to right for all tags.
 """
 function affinetransformmpo(sites::AbstractVector{Index{T}},
@@ -244,11 +248,22 @@ function affinetransformmpo(sites::AbstractVector{Index{T}},
         push!(pos_for_tags, pos_for_tag)
     end
 
-    all(rev_carrydirecs .== true) ||
-        error("Significant bits are aligned from left to right for all tags!")
+    valid_rev_carrydirecs = all(rev_carrydirecs .== true) || all(rev_carrydirecs .== false)
+    valid_rev_carrydirecs ||
+        error("The order of significant bits must be consistent among all tags!")
+
+    #all(rev_carrydirecs .== true) ||
+        #error("Significant bits are aligned from left to right for all tags!")
 
     length(unique([length(s) for s in sites_for_tags])) == 1 ||
         error("The number of sites for each tag must be the same! $([length(s) for s in sites_for_tags])")
+
+    rev_carrydirec = all(rev_carrydirecs .== true) # If true, significant bits are at the left end.
+
+    if !rev_carrydirec
+        transformer_ = affinetransformmpo(reverse(sites), reverse(tags), reverse(coeffs_dic), reverse(bc))
+        return MPO([transformer_[n] for n in reverse(1:length(transformer_))])
+    end
 
     # First check transformations with -1 and -1; e.g., (a, b) = (-1, -1)
     # These transformations are not supported in the backend.

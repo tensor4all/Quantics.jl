@@ -129,11 +129,11 @@ Create an MPO for multiplication by `exp(i θ x)`, where `x = (x_1, ..., x_R)_2`
 """
 function phase_rotation_mpo(sites::AbstractVector{Index{T}}, θ::Float64; targetsites=nothing, tag="")::MPO where {T}
     _, target_sites = _find_target_sites(sites; sitessrc=targetsites, tag=tag)
-    transformer = phase_rotation_mpo(target_sites, θ)
+    transformer = _phase_rotation_mpo(target_sites, θ)
     return matchsiteinds(transformer, sites)
 end
 
-function phase_rotation_mpo(sites::AbstractVector{Index{T}}, θ::Float64)::MPO where {T}
+function _phase_rotation_mpo(sites::AbstractVector{Index{T}}, θ::Float64)::MPO where {T}
     R = length(sites)
     tensors = [ITensor(true) for _ in 1:R]
     for n in 1:R
