@@ -127,21 +127,32 @@ function affinetransform(M::MPS,
         shift::AbstractVector{Int},
         bc::AbstractVector{Int};
         kwargs...)
+    transformer = affinetransformmpo(siteinds(M), tags, coeffs_dic, shift, bc)
+    return apply(transformer, M; kwargs...)
+end
+
+
+function affinetransformmpo(sites::AbstractVector{Index{T}},
+        tags::AbstractVector{String},
+        coeffs_dic::AbstractVector{Dict{String,Int}},
+        shift::AbstractVector{Int},
+        bc::AbstractVector{Int})::MPO where {T}
     # f(x, y) = g(a * x + b * y + s1, c * x + d * y + s2)
     #         = h(a * x + b * y,      c * x + d * y),
     # where h(x, y) = g(x + s1, y + s2).
     # The transformation is executed in this order: g -> h -> f.
 
+    mpos = MPO[]
+
     # Number of variables involved in transformation
     ntransvars = length(tags)
-    sites_b = siteinds(M)
 
     2 <= ntransvars ||
         error("Number of variables for transformation must be greater than or equal to 2.")
 
     sites_for_tag = []
     for tag in tags
-        push!(sites_for_tag, findallsites_by_tag(siteinds(M); tag=tag))
+        push!(sites_for_tag, findallsites_by_tag(sites; tag=tag))
         if length(sites_for_tag[end]) == 0
             error("Tag $tag is not found.")
         end
@@ -155,15 +166,20 @@ function affinetransform(M::MPS,
     # If shift is required
     if !all(shift .== 0)
         for i in 1:ntransvars
-            M = shiftaxis(M, shift[i]; tag=tags[i], bc=bc[i], kwargs...)
+            push!(mpos, shiftaxismpo(sites, shift[i]; tag=tags[i], bc=bc[i]))
         end
     end
 
     # Followed by a rotation
-    r = affinetransform(M, tags, coeffs_dic, bc; kwargs...)
-    sites_a = siteinds(M)
-    @assert sites_a == sites_b
-    return r
+    push!(mpos, affinetransformmpo(sites, tags, coeffs_dic, bc))
+
+    # Contract MPOs
+    res = mpos[1]
+    for n in 2:length(mpos)
+        res = apply(mpos[n], res; cutoff=1e-25, maxdim=typemax(Int))
+    end
+
+    return res
 end
 
 
@@ -179,7 +195,6 @@ function affinetransform(M::MPS,
     transformer = affinetransformmpo(siteinds(M), tags, coeffs_dic, bc)
     return apply(transformer, M; kwargs...)
 end
-
 
 """
 Generate an MPO representing an affine transform of a MPS with no shift
@@ -236,7 +251,6 @@ function affinetransformmpo(sites::AbstractVector{Index{T}},
     length(pos_sites_in) == ntransvars ||
         error("Length of pos_sites_in does not match that of coeffs")
 
-
     # Check if the order of significant bits is consistent among all tags
     rev_carrydirecs = Bool[]
     pos_for_tags = []
@@ -253,7 +267,7 @@ function affinetransformmpo(sites::AbstractVector{Index{T}},
         error("The order of significant bits must be consistent among all tags!")
 
     #all(rev_carrydirecs .== true) ||
-        #error("Significant bits are aligned from left to right for all tags!")
+    #error("Significant bits are aligned from left to right for all tags!")
 
     length(unique([length(s) for s in sites_for_tags])) == 1 ||
         error("The number of sites for each tag must be the same! $([length(s) for s in sites_for_tags])")
@@ -261,7 +275,8 @@ function affinetransformmpo(sites::AbstractVector{Index{T}},
     rev_carrydirec = all(rev_carrydirecs .== true) # If true, significant bits are at the left end.
 
     if !rev_carrydirec
-        transformer_ = affinetransformmpo(reverse(sites), reverse(tags), reverse(coeffs_dic), reverse(bc))
+        transformer_ = affinetransformmpo(
+            reverse(sites), reverse(tags), reverse(coeffs_dic), reverse(bc))
         return MPO([transformer_[n] for n in reverse(1:length(transformer_))])
     end
 
