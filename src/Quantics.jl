@@ -31,5 +31,6 @@ include("mps.jl")
 include("fouriertransform.jl")
 include("imaginarytime.jl")
 include("transformer.jl")
+include("affine.jl")
 
 end
