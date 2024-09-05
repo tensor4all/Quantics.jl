@@ -48,7 +48,7 @@ function affine_transform_matrices(
     A1 = @. clamp(A, 0, typemax(Int))
     A0 = @. clamp(-A, 0, typemax(Int))
     b = b .+ vec(sum(Bool.(A0), dims=2))
-    println(A1, A0, b)
+    #println(A1, A0, b)
 
     # Amax is the maximum value that can be reached by multiplying it with set
     # or unset bits.
@@ -91,7 +91,7 @@ function affine_transform_matrices(
         end
 
         values = zeros(Bool, ncarry_α, ncarry_β, 1 << M, 1 << N)
-        println("\n r=$r $(bcurr)")
+        #println("\n r=$r $(bcurr)")
         # Fill values array. The idea is the following: we iterate over all
         # possible values of the carry from the previous tensor (c_β). Each of
         # those corresponds to a bond index β.
@@ -116,7 +116,7 @@ function affine_transform_matrices(
                 # Map the outgoing carry to an index and store
                 α = mapreduce(*, +, c_α, base_α, init=1)
                 i = _spins_to_number(σ_i) + 1
-                println("$(c_α) * 2 + $(σ_i) <- $(c_β) * 2 + $(σ_j)")
+                #println("$(c_α) * 2 + $(σ_i) <- $(c_β) * 2 + $(σ_j)")
                 values[α, β, i, j] = true
             end
         end
