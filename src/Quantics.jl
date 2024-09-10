@@ -13,7 +13,7 @@ import ITensors
 import ITensors.NDTensors: Tensor, BlockSparseTensor, blockview
 
 import SparseIR: Fermionic, Bosonic, Statistics
-import LinearAlgebra: I
+import LinearAlgebra: I, inv
 using StaticArrays
 import SparseArrays: sparse
 

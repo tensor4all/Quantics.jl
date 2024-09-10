@@ -6,7 +6,8 @@ quantics representation.
 """
 function affine_transform_mpo(
             outsite::AbstractMatrix{<:Index}, insite::AbstractMatrix{<:Index},
-            A::AbstractMatrix{<:Integer}, b::AbstractVector{<:Integer}
+            A::AbstractMatrix{<:Union{Integer,Rational}},
+            b::AbstractVector{<:Union{Integer,Rational}}
             )
     R = size(outsite, 1)
     M, N = size(A)
@@ -16,8 +17,7 @@ function affine_transform_mpo(
         throw(ArgumentError("vector is not correctly dimensioned"))
 
     # get the tensors so that we know how large the links must be
-    tensors = affine_transform_tensors(
-                    R, SMatrix{M, N, Int}(A), SVector{M, Int}(b))
+    tensors = affine_transform_tensors(R, A, b)
 
     # Create the links
     link = [Index(size(tensors[r], 2), tags="link $r") for r in 1:R-1]
@@ -44,17 +44,19 @@ Compute vector of core tensors (constituent 4-way tensors) for a matrix product
 operator corresponding to the affine transformation `y = A*x + b`.
 """
 function affine_transform_tensors(
-            R::Integer, A::AbstractMatrix{<:Integer},
-            b::AbstractVector{<:Integer})
+            R::Integer, A::AbstractMatrix{<:Union{Integer,Rational}},
+            b::AbstractVector{<:Union{Integer,Rational}})
     return affine_transform_tensors(Int(R), _affine_static_args(A, b)...)
 end
 
 function affine_transform_tensors(
-            R::Int, A::SMatrix{M, N, Int}, b::SVector{M, Int}
+            R::Int, A::SMatrix{M, N, Int}, b::SVector{M, Int}, denom::Int
             ) where {M, N}
     # Checks
     0 <= R ||
         throw(DomainError(R, "invalid value of the length R"))
+    denom == 1 ||
+        throw(ArgumentError("XXX only denominator one supported for now"))
 
     # The output tensors are a collection of matrices, but their first two
     # dimensions (links) vary
@@ -102,10 +104,10 @@ function affine_transform_core(
             carry::AbstractVector{SVector{M, Int}};
             transform_out_carry::Function=identity
             ) where {M, N}
-    # The basic idea here is the following: we compute r = A*x + b + c for all
-    # "incoming" carrys d and all possible bit vectors, x ∈ {0,1}^N.  Then we
-    # decompose r = 2*c + y, where y is again a bit vector, y ∈ {0,1}^M, and
-    # c is the "outgoing" carry, which may be negative.  We then store this
+    # The basic idea here is the following: we compute r = A*x + b + c
+    # for all "incoming" carrys d and all possible bit vectors, x ∈ {0,1}^N.
+    # Then we decompose r = 2*c + y, where y is again a bit vector, y ∈ {0,1}^M,
+    # and c is the "outgoing" carry, which may be negative.  We then store this
     # as something like out[d][c, x, y] = true.
     out = Dict{SVector{M, Int}, Array{Bool, 3}}()
     sizehint!(out, length(carry))
@@ -140,27 +142,35 @@ end
 Compute full transformation matrix for `y = A*x + b`.
 """
 function affine_transform_matrix(
-            R::Integer, A::AbstractMatrix{<:Integer},
-            b::AbstractVector{<:Integer})
+            R::Integer, A::AbstractMatrix{<:Union{Integer,Rational}},
+            b::AbstractVector{<:Union{Integer,Rational}})
     return affine_transform_matrix(Int(R), _affine_static_args(A, b)...)
 end
 
 function affine_transform_matrix(
-            R::Int, A::SMatrix{M, N, Int}, b::SVector{M, Int}) where {M, N}
+            R::Int, A::SMatrix{M, N, Int}, b::SVector{M, Int},
+            denom::Int) where {M, N}
     # Checks
     0 <= R ||
         throw(DomainError(R, "invalid value of the length R"))
 
     mask = (1 << R) - 1
-    y_index = Vector{Int}(undef, 1 << (R * N))
+    y_index = Int[]
+    x_index = Int[]
 
     for (ix, x) in enumerate(Iterators.product(ntuple(_ -> 0:mask, N)...))
-        y = (A * SVector{N, Int}(x) + b) .& mask
+        z = A * SVector{N, Int}(x) + b
+        all(iszero, z .% denom) ||
+            continue
+
+        # XXX there is an ambiguity here: shall we divide first, then do
+        #     modulo, or the other way 'round?
+        y = @. (z ÷ denom) & mask
         iy = digits_to_number(y, R) + 1
-        @inbounds y_index[ix] = iy
+        push!(y_index, iy)
+        push!(x_index, ix)
     end
-    x_index = collect(1:1 << (R * N))
-    values = ones(Bool, 1 << (R * N))
+    values = ones(Bool, size(x_index))
     return sparse(y_index, x_index, values, 1 << (R*M), 1 << (R*N))
 end
 
@@ -186,12 +196,49 @@ function affine_mpo_to_matrix(
     end
 end
 
-function _affine_static_args(
-            A::AbstractMatrix{<:Integer}, b::AbstractVector{<:Integer})
+function _affine_static_args(A::AbstractMatrix{<:Union{Integer,Rational}},
+                             b::AbstractVector{<:Union{Integer,Rational}})
     M, N = size(A)
     size(b, 1) == M ||
         throw(ArgumentError("A and b have incompatible size"))
-    return SMatrix{M, N, Int}(A), SVector{M, Int}(b)
+
+    # Factor out common denominator and pass
+    denom = lcm(mapreduce(denominator, lcm, A, init=1),
+                mapreduce(denominator, lcm, b, init=1))
+    Ai = @. Int(denom * A)
+    bi = @. Int(denom * b)
+
+    # Construct static matrix
+    return SMatrix{M, N, Int}(Ai), SVector{M, Int}(bi), denom
+end
+
+"""
+    Ainv, binv = active_to_passive(A::AbstractMatrix, b::AbstractVector)
+
+Change active affine transformation `y = A*x + b` to the passive (inverse) one
+`x = Ainv*y + binv`.
+
+Note that these transformations are not strict inverses of each other once you
+put them on a discrete grid: in particular, Ainv may have rational coefficients
+even though A is purely integer. In this case, the inverse transformation only
+maps some of the points.
+"""
+function active_to_passive(A::AbstractMatrix{<:Union{Rational,Integer}},
+                           b::AbstractVector{<:Union{Rational,Integer}})
+    return active_to_passive(Rational.(A), Rational.(b))
+end
+
+function active_to_passive(
+            A::AbstractMatrix{<:Rational}, b::AbstractVector{<:Rational})
+    m, n = size(A)
+    T = [A b; zero(b)' 1]
+
+    # XXX: we do not support pseudo-inverses (LinearAlgebbra cannot do
+    #      this yet over the Rationals).
+    Tinv = inv(T)
+    Ainv = Tinv[1:m, 1:n]
+    binv = Tinv[1:m, n+1]
+    return Ainv, binv
 end
 
 """
