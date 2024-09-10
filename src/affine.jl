@@ -20,19 +20,20 @@ function affine_transform_mpo(
                     R, SMatrix{M, N, Int}(A), SVector{M, Int}(b))
 
     # Create the links
-    link = [Index(size(tensors[r], 1), tags="link $r") for r in 1:R-1]
+    link = [Index(size(tensors[r], 2), tags="link $r") for r in 1:R-1]
 
     # Fill the MPO, taking care to not include auxiliary links at the edges
     mpo = MPO(R)
     spin_dims = ntuple(_ -> 2, M + N)
-    mpo[1] = ITensor(reshape(tensors[1], size(tensors[1])[1], spin_dims...),
+    println(size.(tensors))
+    mpo[1] = ITensor(reshape(tensors[1], size(tensors[1], 2), spin_dims...),
                      (link[1], outsite[1,:]..., insite[1,:]...))
     for r in 2:R-1
         newshape = size(tensors[r])[1:2]..., spin_dims...
         mpo[r] = ITensor(reshape(tensors[r], newshape),
-                         (link[r], link[r-1], outsite[r,:]..., insite[r,:]...))
+                         (link[r-1], link[r], outsite[r,:]..., insite[r,:]...))
     end
-    mpo[R] = ITensor(reshape(tensors[R], size(tensors[R])[2], spin_dims...),
+    mpo[R] = ITensor(reshape(tensors[R], size(tensors[R], 1), spin_dims...),
                      (link[R-1], outsite[R,:]..., insite[R,:]...))
     return mpo
 end
@@ -62,13 +63,13 @@ function affine_transform_tensors(
 
     # The initial carry is zero
     carry = [zero(SVector{M, Int})]
-    for r in 1:R
+    for r in R:-1:1
         # Figure out the current bit to add from the shift term and shift
         # it out from the array
         bcurr = @. Bool(b & 1)
 
-        # Get tensor. For the last tensor, we discard the carry.
-        out_tf = (r == R) ? zero : identity
+        # Get tensor. For the first tensor, we discard the carry.
+        out_tf = (r == 1) ? zero : identity
         new_carry, data = affine_transform_core(A, bcurr, carry,
                                                 transform_out_carry=out_tf)
         tensors[r] = data
@@ -170,8 +171,12 @@ function affine_mpo_to_matrix(
     prev_warn_order = ITensors.disable_warn_order()
     try
         mpo_contr = reduce(*, mpo)
-        tensor = Array(mpo_contr, vec(outsite)..., vec(insite)...)
-        matrix = reshape(tensor, 1 << length(outsite), 1 << length(insite))
+        out_indices = vec(reverse(outsite, dims=1))
+        in_indices = vec(reverse(insite, dims=1))
+        println(out_indices)
+        println(in_indices)
+        tensor = Array(mpo_contr, out_indices..., in_indices...)
+        matrix = reshape(tensor, 1 << length(out_indices), 1 << length(in_indices))
         return matrix
     finally
         ITensors.set_warn_order(prev_warn_order)
