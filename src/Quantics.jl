@@ -15,6 +15,7 @@ import ITensors.NDTensors: Tensor, BlockSparseTensor, blockview
 import SparseIR: Fermionic, Bosonic, Statistics
 import LinearAlgebra: I
 using StaticArrays
+import SparseArrays: sparse
 
 import FastMPOContractions
 

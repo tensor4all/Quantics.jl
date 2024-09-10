@@ -1,7 +1,3 @@
-using StaticArrays
-using SparseArrays
-using ITensors
-
 """
     affine_transform_mpo(outsite, insite, A, b)
 
@@ -178,14 +174,14 @@ function affine_mpo_to_matrix(
         matrix = reshape(tensor, 1 << length(outsite), 1 << length(insite))
         return matrix
     finally
-        ITensors.set_warn_order!(prev_warn_order)
+        ITensors.set_warn_order(prev_warn_order)
     end
 end
 
 function _affine_static_args(
             A::AbstractMatrix{<:Integer}, b::AbstractVector{<:Integer})
     M, N = size(A)
-    size(b, 1) == N ||
+    size(b, 1) == M ||
         throw(ArgumentError("A and b have incompatible size"))
     return SMatrix{M, N, Int}(A), SVector{M, Int}(b)
 end
