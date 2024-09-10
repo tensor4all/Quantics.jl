@@ -25,7 +25,6 @@ function affine_transform_mpo(
     # Fill the MPO, taking care to not include auxiliary links at the edges
     mpo = MPO(R)
     spin_dims = ntuple(_ -> 2, M + N)
-    println(size.(tensors))
     mpo[1] = ITensor(reshape(tensors[1], size(tensors[1], 2), spin_dims...),
                      (link[1], outsite[1,:]..., insite[1,:]...))
     for r in 2:R-1
@@ -171,12 +170,16 @@ function affine_mpo_to_matrix(
     prev_warn_order = ITensors.disable_warn_order()
     try
         mpo_contr = reduce(*, mpo)
+
+        # Given some variables (x, y), we have to bring the indices in the
+        # order (xR, ..., x1, yR, ..., y1) in order to have y = (y1 ... yR)_2
+        # once we reshape a column-major array and match the order of the
+        # variables in the full matrix.
         out_indices = vec(reverse(outsite, dims=1))
         in_indices = vec(reverse(insite, dims=1))
-        println(out_indices)
-        println(in_indices)
         tensor = Array(mpo_contr, out_indices..., in_indices...)
-        matrix = reshape(tensor, 1 << length(out_indices), 1 << length(in_indices))
+        matrix = reshape(tensor,
+                         1 << length(out_indices), 1 << length(in_indices))
         return matrix
     finally
         ITensors.set_warn_order(prev_warn_order)
