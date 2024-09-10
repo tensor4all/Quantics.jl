@@ -1,6 +1,13 @@
 using StaticArrays
+using SparseArrays
 using ITensors
 
+"""
+    affine_transform_mpo(outsite, insite, A, b)
+
+Constructs an ITensor matrix product state for an affine transform in the
+quantics representation.
+"""
 function affine_transform_mpo(
             outsite::AbstractMatrix{<:Index}, insite::AbstractMatrix{<:Index},
             A::AbstractMatrix{<:Integer}, b::AbstractVector{<:Integer}
@@ -29,7 +36,6 @@ function affine_transform_mpo(
         mpo[r] = ITensor(reshape(tensors[r], newshape),
                          (link[r], link[r-1], outsite[r,:]..., insite[r,:]...))
     end
-    println(size(tensors[R]))
     mpo[R] = ITensor(reshape(tensors[R], size(tensors[R])[2], spin_dims...),
                      (link[R-1], outsite[R,:]..., insite[R,:]...))
     return mpo
@@ -44,9 +50,7 @@ operator corresponding to the affine transformation `y = A*x + b`.
 function affine_transform_tensors(
             R::Integer, A::AbstractMatrix{<:Integer},
             b::AbstractVector{<:Integer})
-    M, N = size(A)
-    return affine_transform_tensors(
-            Int(R), SMatrix{M, N, Int}(A), SVector{M, Int}(b))
+    return affine_transform_tensors(Int(R), _affine_static_args(A, b)...)
 end
 
 function affine_transform_tensors(
@@ -111,15 +115,15 @@ function affine_transform_core(
     sizehint!(out, length(carry))
     for (c_index, c) in enumerate(carry)
         for (x_index, x) in enumerate(Iterators.product(ntuple(_ -> 0:1, N)...))
-            r = A * SVector{N, Bool}(x) + b + SVector{N, Int}(c)
+            r = A * SVector{N, Bool}(x) + b + SVector{M, Int}(c)
             y = @. Bool(r & 1)
             d::SVector{M, Int} = transform_out_carry(r .>> 1)
-            y_index = _spins_to_number(y) + 1
+            y_index = digits_to_number(y) + 1
 
             d_mat = get!(out, d) do
                 return zeros(Bool, length(carry), 1 << M, 1 << N)
             end
-            @inbounds d_mat[c_index, x_index, y_index] = true
+            @inbounds d_mat[c_index, y_index, x_index] = true
         end
     end
 
@@ -134,7 +138,77 @@ function affine_transform_core(
     return carry_out, value_out
 end
 
-_spins_to_number(v::SVector{<:Any, Bool}) = _spins_to_number(Tuple(v))
-_spins_to_number(v::Tuple{Bool, Vararg{Bool}}) =
-    _spins_to_number(v[2:end]) << 1 | v[1]
-_spins_to_number(v::Tuple{}) = 0
+"""
+    affine_transform_matrix(R, A, b)
+
+Compute full transformation matrix for `y = A*x + b`.
+"""
+function affine_transform_matrix(
+            R::Integer, A::AbstractMatrix{<:Integer},
+            b::AbstractVector{<:Integer})
+    return affine_transform_matrix(Int(R), _affine_static_args(A, b)...)
+end
+
+function affine_transform_matrix(
+            R::Int, A::SMatrix{M, N, Int}, b::SVector{M, Int}) where {M, N}
+    # Checks
+    0 <= R ||
+        throw(DomainError(R, "invalid value of the length R"))
+
+    mask = (1 << R) - 1
+    y_index = Vector{Int}(undef, 1 << (R * N))
+
+    for (ix, x) in enumerate(Iterators.product(ntuple(_ -> 0:mask, N)...))
+        y = (A * SVector{N, Int}(x) + b) .& mask
+        iy = digits_to_number(y, R) + 1
+        @inbounds y_index[ix] = iy
+    end
+    x_index = collect(1:1 << (R * N))
+    values = ones(Bool, 1 << (R * N))
+    return sparse(y_index, x_index, values, 1 << (R*M), 1 << (R*N))
+end
+
+function affine_mpo_to_matrix(
+            outsite::AbstractMatrix{<:Index}, insite::AbstractMatrix{<:Index},
+            mpo::ITensors.MPO)
+    prev_warn_order = ITensors.disable_warn_order()
+    try
+        mpo_contr = reduce(*, mpo)
+        tensor = Array(mpo_contr, vec(outsite)..., vec(insite)...)
+        matrix = reshape(tensor, 1 << length(outsite), 1 << length(insite))
+        return matrix
+    finally
+        ITensors.set_warn_order!(prev_warn_order)
+    end
+end
+
+function _affine_static_args(
+            A::AbstractMatrix{<:Integer}, b::AbstractVector{<:Integer})
+    M, N = size(A)
+    size(b, 1) == N ||
+        throw(ArgumentError("A and b have incompatible size"))
+    return SMatrix{M, N, Int}(A), SVector{M, Int}(b)
+end
+
+"""
+    digits_to_number(v::AbstractVector{Bool})
+    digits_to_number(v::AbstractVector{<:Integer}, bits::Integer)
+
+Converts a vector of digits, starting with the least significant digit, to
+a number.  If the digits are boolean, then they are interpreted in base-2,
+otherwise, in base `2^bits`.
+"""
+digits_to_number(v::AbstractVector{Bool}) = _digits_to_number(Tuple(v))
+digits_to_number(v::AbstractVector{<:Integer}, bits::Integer) =
+    _digits_to_number(Int.(Tuple(v)), Int(bits))
+
+@inline _digits_to_number(v::Tuple{}) = 0
+@inline _digits_to_number(v::Tuple{Bool, Vararg{Bool}}) =
+    _digits_to_number(v[2:end]) << 1 | v[1]
+@inline _digits_to_number(v::Tuple{}, bits::Int) = 0
+@inline function _digits_to_number(v::Tuple{Int, Vararg{Int}}, bits::Int)
+    mask = (~0) << bits
+    iszero(v[1] & mask) ||
+        throw(DomainError(v[1], "invalid digit in base $(1 << bits)"))
+    return _digits_to_number(v[2:end], bits) << bits | v[1]
+end
