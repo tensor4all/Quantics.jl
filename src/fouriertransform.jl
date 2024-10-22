@@ -175,7 +175,7 @@ end
 function _apply_qft(M::MPO, gsrc::MPS, target_sites, sitepos, sitesdst; kwargs...)
     _replace_mpo_siteinds!(M, _extractsites(M), target_sites)
     M = matchsiteinds(M, siteinds(gsrc))
-    gdst = ITensors.apply(M, gsrc; kwargs...)
+    gdst = _apply(M, gsrc; kwargs...)
 
     N = length(target_sites)
     for n in eachindex(target_sites)
@@ -236,7 +236,7 @@ function fouriertransform(M::MPS;
         targetsites=target_sites)
 
     # Apply QFT
-    M_result = apply(MQ, M_result; kwargs...)
+    M_result = _apply(MQ, M_result; kwargs...)
 
     N = length(target_sites)
     for n in eachindex(target_sites)

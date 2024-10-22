@@ -383,7 +383,8 @@ function _find_target_sites(M::MPS; sitessrc=nothing, tag="")
     _find_target_sites(siteinds(M); sitessrc, tag)
 end
 
-function _find_target_sites(sites::AbstractVector{Index{T}}; sitessrc=nothing, tag="") where {T}
+function _find_target_sites(
+        sites::AbstractVector{Index{T}}; sitessrc=nothing, tag="") where {T}
     if tag == "" && sitessrc === nothing
         error("tag or sitesrc must be specified")
     elseif tag != "" && sitessrc !== nothing
@@ -396,7 +397,7 @@ function _find_target_sites(sites::AbstractVector{Index{T}}; sitessrc=nothing, t
         target_sites = [sites[p] for p in sitepos]
     elseif sitessrc !== nothing
         target_sites = sitessrc
-        sitepos = Int[findfirst(x->x==s, sites) for s in sitessrc]
+        sitepos = Int[findfirst(x -> x == s, sites) for s in sitessrc]
     end
 
     return sitepos, target_sites
@@ -525,4 +526,27 @@ function _extract_diagonal(t, site::Index{T}, site2::Index{T}) where {T<:Number}
         newdata[.., i] = olddata[.., i, i]
     end
     return ITensor(newdata, restinds..., site)
+end
+
+function _apply(A::MPO, Ψ::MPO; alg::String="fit", cutoff::Real=1e-25, kwargs...)::MPO
+    if :algorithm ∈ keys(kwargs)
+        error("keyword argument :algorithm is not allowed")
+    end
+    if alg == "densitymatrix" && cutoff <= 1e-10
+        @warn "cutoff is too small for densitymatrix algorithm. Use fit algorithm instead."
+    end
+    AΨ = replaceprime(
+        FastMPOContractions.contract_mpo_mpo(A', asMPO(Ψ); alg, kwargs...), 2 => 1)
+    MPO(collect(AΨ))
+end
+
+function _apply(A::MPO, Ψ::MPS; alg::String="fit", cutoff::Real=1e-25, kwargs...)::MPS
+    if :algorithm ∈ keys(kwargs)
+        error("keyword argument :algorithm is not allowed")
+    end
+    if alg == "densitymatrix" && cutoff <= 1e-10
+        @warn "cutoff is too small for densitymatrix algorithm. Use fit algorithm instead."
+    end
+    AΨ = noprime.(FastMPOContractions.contract_mpo_mpo(A, asMPO(Ψ); alg, kwargs...))
+    MPS(collect(AΨ))
 end

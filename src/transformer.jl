@@ -65,9 +65,8 @@ Note that x = 0, 1, 2, ..., N-1 are mapped to x = 0, N-1, N-2, ..., 1 mod N.
 """
 function reverseaxis(M::MPS; tag="x", bc::Int=1, kwargs...)
     bc ∈ [1, -1] || error("bc must be either 1 or -1")
-    return apply(reverseaxismpo(siteinds(M); tag=tag, bc=bc), M; kwargs...)
+    return _apply(reverseaxismpo(siteinds(M); tag=tag, bc=bc), M; kwargs...)
 end
-
 
 function reverseaxismpo(sites::AbstractVector{Index{T}}; tag="x", bc::Int=1)::MPO where {T}
     bc ∈ [1, -1] || error("bc must be either 1 or -1")
@@ -85,14 +84,14 @@ f(x) = g(x + shift) for x = 0, 1, ..., 2^R-1 and 0 <= shift < 2^R.
 """
 function shiftaxis(M::MPS, shift::Int; tag="x", bc::Int=1, kwargs...)
     bc ∈ [1, -1] || error("bc must be either 1 or -1")
-    return apply(shiftaxismpo(siteinds(M), shift; tag=tag, bc=bc), M; kwargs...)
+    return _apply(shiftaxismpo(siteinds(M), shift; tag=tag, bc=bc), M; kwargs...)
 end
-
 
 """
 f(x) = g(x + shift) for x = 0, 1, ..., 2^R-1 and 0 <= shift < 2^R.
 """
-function shiftaxismpo(sites::AbstractVector{Index{T}}, shift::Int; tag="x", bc::Int=1)::MPO where {T}
+function shiftaxismpo(
+        sites::AbstractVector{Index{T}}, shift::Int; tag="x", bc::Int=1)::MPO where {T}
     bc ∈ [1, -1] || error("bc must be either 1 or -1")
     targetsites = findallsiteinds_by_tag(sites; tag=tag) # From left to right: x=1, 2, ...
     pos = findallsites_by_tag(sites; tag=tag)
@@ -119,7 +118,7 @@ Multiply by exp(i θ x), where x = (x_1, ..., x_R)_2.
 """
 function phase_rotation(M::MPS, θ::Float64; targetsites=nothing, tag="")::MPS
     transformer = phase_rotation_mpo(siteinds(M), θ; targetsites=targetsites, tag=tag)
-    apply(transformer, M)
+    _apply(transformer, M)
 end
 
 """
@@ -127,7 +126,8 @@ Create an MPO for multiplication by `exp(i θ x)`, where `x = (x_1, ..., x_R)_2`
 
 `sites`: site indices for `x_1`, `x_2`, ..., `x_R`.
 """
-function phase_rotation_mpo(sites::AbstractVector{Index{T}}, θ::Float64; targetsites=nothing, tag="")::MPO where {T}
+function phase_rotation_mpo(sites::AbstractVector{Index{T}}, θ::Float64;
+        targetsites=nothing, tag="")::MPO where {T}
     _, target_sites = _find_target_sites(sites; sitessrc=targetsites, tag=tag)
     transformer = _phase_rotation_mpo(target_sites, θ)
     return matchsiteinds(transformer, sites)
@@ -139,16 +139,18 @@ function _phase_rotation_mpo(sites::AbstractVector{Index{T}}, θ::Float64)::MPO 
     for n in 1:R
         tensors[n] = op("Phase", sites[n]; ϕ=θ * 2^(R - n))
     end
-    links = [Index(1, "Link,l=$l") for l in 1:(R-1)]
-    tensors[1] = ITensor(Array(tensors[1], sites[1]', sites[1]), sites[1], sites[1]', links[1])
-    for l in 2:(R-1)
-        tensors[l] = ITensor(Array(tensors[l], sites[l]', sites[l]), links[l-1], sites[l], sites[l]', links[l])
+    links = [Index(1, "Link,l=$l") for l in 1:(R - 1)]
+    tensors[1] = ITensor(
+        Array(tensors[1], sites[1]', sites[1]), sites[1], sites[1]', links[1])
+    for l in 2:(R - 1)
+        tensors[l] = ITensor(Array(tensors[l], sites[l]', sites[l]),
+            links[l - 1], sites[l], sites[l]', links[l])
     end
-    tensors[end] = ITensor(Array(tensors[end], sites[end]', sites[end]), links[end], sites[end], sites[end]')
+    tensors[end] = ITensor(
+        Array(tensors[end], sites[end]', sites[end]), links[end], sites[end], sites[end]')
 
     return MPO(tensors)
 end
-
 
 function _upper_lower_triangle(upper_or_lower::Symbol)::Array{Float64,4}
     upper_or_lower ∈ [:upper, :lower] || error("Invalid upper_or_lower $(upper_or_lower)")

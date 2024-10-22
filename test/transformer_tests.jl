@@ -166,8 +166,6 @@ end
         @test fz_reconst ≈ fz_ref
     end
 
-
-
     #==
     @testset "asdiagonal" begin
         R = 2
@@ -211,7 +209,6 @@ end
         @test ref ≈ _reconst(Quantics.phase_rotation(f, θ; tag="x"))
         @test ref ≈ _reconst(Quantics.phase_rotation(f, θ; targetsites=sites))
     end
-
 end
 
 @testitem "transformer_tests.jl/shiftaxis" begin
