@@ -1,4 +1,4 @@
-#__precompile__(false) 
+#__precompile__(false)
 
 module Quantics
 
@@ -10,7 +10,10 @@ module Quantics
 
 using ITensors
 import ITensors
+using ITensors.SiteTypes: siteinds
 import ITensors.NDTensors: Tensor, BlockSparseTensor, blockview
+using ITensorMPS: MPS, MPO, AbstractMPS
+using ITensorMPS: findsite, linkinds, linkind
 
 import SparseIR: Fermionic, Bosonic, Statistics
 import LinearAlgebra: I

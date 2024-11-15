@@ -2,6 +2,7 @@
     using Test
     import Quantics
     using ITensors
+    using ITensorMPS: randomMPS, MPO
 
     @testset "_preprocess_matmul" begin
         N = 2
@@ -53,6 +54,7 @@ end
     using Test
     import Quantics
     using ITensors
+    using ITensorMPS: randomMPS
 
     @testset "matmul" for T in [Float64, ComplexF64]
         N = 3
@@ -120,6 +122,8 @@ end
     using Test
     import Quantics
     using ITensors
+    using ITensors.SiteTypes: siteinds
+    using ITensorMPS: randomMPS
 
     """
     Reconstruct 3D matrix

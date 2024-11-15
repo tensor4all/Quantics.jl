@@ -1,6 +1,7 @@
 @testitem "binaryop_tests.jl/_binaryop" begin
     using Test
     using ITensors
+    using ITensorMPS: randomMPS
     ITensors.disable_warn_order()
     using Quantics
     import Random
@@ -64,6 +65,7 @@ end
 @testitem "binaryop_tests.jl/affinetransform" begin
     using Test
     using ITensors
+    using ITensorMPS: randomMPS
     ITensors.disable_warn_order()
     using Quantics
     import Random
@@ -126,6 +128,7 @@ end
 @testitem "binaryop_tests.jl/affinetransform_three_vars" begin
     using Test
     using ITensors
+    using ITensorMPS: randomMPS
     ITensors.disable_warn_order()
     using Quantics
     import Random
@@ -248,6 +251,7 @@ end
 @testitem "binaryop_tests.jl/shiftop" begin
     using Test
     using ITensors
+    using ITensorMPS: randomMPS
     ITensors.disable_warn_order()
     using Quantics
     import Random

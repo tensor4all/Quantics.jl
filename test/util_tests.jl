@@ -2,6 +2,8 @@
     using Test
     import Quantics
     using ITensors
+    using ITensors.SiteTypes: siteinds
+    using ITensorMPS: randomMPS, randomMPO, random_mps, MPO
 
     @testset "_replace_mpo_siteinds!" begin
         nbit = 3

@@ -3,7 +3,8 @@
     using Test
     using Quantics
     using ITensors
-
+    using ITensorMPS: randomMPS, MPO
+    using ITensors.SiteTypes: siteinds
     # A brute-force implementation of _qft (only for tests)
     function _qft_ref(sites; cutoff::Float64=1e-14, sign::Int=1)
         abs(sign) == 1 || error("sign must either 1 or -1")
@@ -41,6 +42,7 @@ end
     using Test
     using Quantics
     using ITensors
+    using ITensorMPS: randomMPS
 
     function _ft_1d_ref(X, sign, originx, origink)
         N = length(X)

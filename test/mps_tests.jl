@@ -2,6 +2,7 @@
     using Test
     import Quantics
     using ITensors
+    using ITensors.SiteTypes: siteinds
     @testset "onemps" begin
         nbit = 3
         sites = siteinds("Qubit", nbit)
@@ -14,6 +15,7 @@ end
     using Test
     import Quantics
     using ITensors
+    using ITensors.SiteTypes: siteinds
     @testset "expqtt" begin
         R = 10
         sites = siteinds("Qubit", 10)

@@ -1,7 +1,8 @@
 @testitem "imaginarytime_tests.jl/imaginarytime" begin
     using Test
     using Quantics
-    import ITensors: siteinds, Index
+    using ITensors: siteinds, Index
+    using ITensors.SiteTypes: op
     import ITensors
     import SparseIR: Fermionic, Bosonic, FermionicFreq, valueim
 
