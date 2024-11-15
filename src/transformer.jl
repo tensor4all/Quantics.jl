@@ -137,7 +137,7 @@ function _phase_rotation_mpo(sites::AbstractVector{Index{T}}, θ::Float64)::MPO 
     R = length(sites)
     tensors = [ITensor(true) for _ in 1:R]
     for n in 1:R
-        tensors[n] = op("Phase", sites[n]; ϕ=θ * 2^(R - n))
+        tensors[n] = ITensors.SiteTypes.op("Phase", sites[n]; ϕ=θ * 2^(R - n))
     end
     links = [Index(1, "Link,l=$l") for l in 1:(R - 1)]
     tensors[1] = ITensor(
