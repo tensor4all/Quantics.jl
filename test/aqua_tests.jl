@@ -1,4 +1,5 @@
-@testitem begin
+@testitem "code quality test" begin
+    using Test
     using Aqua
     import Quantics
 
