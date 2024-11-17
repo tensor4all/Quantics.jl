@@ -70,15 +70,17 @@ end
 """
 Convert an MPS tensor to an MPO tensor with a diagonal structure
 """
-function _asdiagonal(t, site::Index{T})::ITensor where {T<:Number}
-    hasinds(t, site') && error("Found $(site')")
-    links = uniqueinds(inds(t), site)
+function _asdiagonal(t, site::Index{T}; baseplev=0)::ITensor where {T<:Number}
+    ITensors.hasinds(t, site') && error("Found $(site')")
+    links = ITensors.uniqueinds(ITensors.inds(t), site)
     rawdata = Array(t, links..., site)
-    tensor = zeros(eltype(t), size(rawdata)..., dim(site))
-    for i in 1:dim(site)
+    tensor = zeros(eltype(t), size(rawdata)..., ITensors.dim(site))
+    for i in 1:ITensors.dim(site)
         tensor[.., i, i] = rawdata[.., i]
     end
-    return ITensor(tensor, links..., site', site)
+    return ITensor(
+        tensor, links..., ITensors.prime(site, baseplev + 1), ITensors.prime(site, baseplev)
+    )
 end
 
 function _todense(t, site::Index{T}) where {T<:Number}
@@ -160,4 +162,68 @@ function automul(M1::MPS, M2::MPS; tag_row::String="", tag_shared::String="",
     end
 
     return asMPS(M)
+end
+
+
+"""
+By default, elementwise multiplication will be performed.
+"""
+function automul(
+    M1::BlockedMPS,
+    M2::BlockedMPS;
+    tag_row::String="",
+    tag_shared::String="",
+    tag_col::String="",
+    alg="naive",
+    maxdim=typemax(Int),
+    cutoff=1e-25,
+    kwargs...,
+)
+    all(length.(siteinds(M1)) .== 1) || error("M1 should have only 1 site index per site")
+    all(length.(siteinds(M2)) .== 1) || error("M2 should have only 1 site index per site")
+
+    sites_row = _findallsiteinds_by_tag(M1; tag=tag_row)
+    sites_shared = _findallsiteinds_by_tag(M1; tag=tag_shared)
+    sites_col = _findallsiteinds_by_tag(M2; tag=tag_col)
+    sites_matmul = Set(Iterators.flatten([sites_row, sites_shared, sites_col]))
+
+    sites1 = only.(siteinds(M1))
+    sites1_ewmul = setdiff(only.(siteinds(M1)), sites_matmul)
+    sites2_ewmul = setdiff(only.(siteinds(M2)), sites_matmul)
+    sites2_ewmul == sites1_ewmul || error("Invalid sites for elementwise multiplication")
+
+    M1 = _makesitediagonal(M1, sites1_ewmul; baseplev=1)
+    M2 = _makesitediagonal(M2, sites2_ewmul; baseplev=0)
+
+    sites_M1_diag = [collect(x) for x in siteinds(M1)]
+    sites_M2_diag = [collect(x) for x in siteinds(M2)]
+
+    M1 = rearrange_siteinds(M1, combinesites(sites_M1_diag, sites_row, sites_shared))
+
+    M2 = rearrange_siteinds(M2, combinesites(sites_M2_diag, sites_shared, sites_col))
+
+    M = ProjMPSs.contract(M1, M2; alg=alg, kwargs...)
+
+    M = extractdiagonal(M, sites1_ewmul)
+
+    ressites = Vector{eltype(siteinds(M1)[1])}[]
+    for s in siteinds(M)
+        s_ = unique(ITensors.noprime.(s))
+        if length(s_) == 1
+            push!(ressites, s_)
+        else
+            if s_[1] ∈ sites1
+                push!(ressites, [s_[1]])
+                push!(ressites, [s_[2]])
+            else
+                push!(ressites, [s_[2]])
+                push!(ressites, [s_[1]])
+            end
+        end
+    end
+    return ProjMPSs.truncate(rearrange_siteinds(M, ressites); cutoff=cutoff, maxdim=maxdim)
+end
+
+function _findallsiteinds_by_tag(M::BlockedMPS; tag=tag)
+    return Quantics.findallsiteinds_by_tag(only.(siteinds(M)); tag=tag)
 end
