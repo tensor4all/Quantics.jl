@@ -1,19 +1,12 @@
-#__precompile__(false)
-
 module Quantics
-
-#@everywhere begin
-#using Pkg
-#Pkg.activate(".")
-#Pkg.instantiate()
-#end
 
 using ITensors
 import ITensors
 using ITensors.SiteTypes: siteinds
 import ITensors.NDTensors: Tensor, BlockSparseTensor, blockview
 using ITensorMPS: MPS, MPO, AbstractMPS
-using ITensorMPS: findsite, linkinds, linkind
+using ITensorMPS: findsite, linkinds, linkind, findsites
+import ProjMPSs: ProjMPSs, ProjMPS, BlockedMPS, isprojectedat, project
 
 import SparseIR: Fermionic, Bosonic, Statistics
 import LinearAlgebra: I
