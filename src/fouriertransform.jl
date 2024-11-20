@@ -20,124 +20,20 @@ We denote the input and output MPS's by ``X`` and ``Y``, respectively.
 
 """
 function _qft(sites; cutoff::Float64=1e-14, sign::Int=1)
-    if any([!hastags(inds(s), "Qubit") for s in sites])
+    if !all(dim.(sites) .== 2)
         error("All siteinds for qft must has Qubit tag")
     end
-    M = _qft_wo_norm(sites; cutoff=cutoff, sign=sign)
-    M *= 2.0^(-0.5 * length(sites))
 
-    # Quick hack: In the Markus's note,
-    # the digits are ordered oppositely from the present convention.
-    M = MPO([M[n] for n in length(M):-1:1])
-    _replace_mpo_siteinds!(M, reverse(sites), sites)
+    R = length(sites)
+    R > 1 || error("The number of bits must be greater than 1")
 
-    return M
+    sites_MPO = collect.(zip(prime.(sites), sites))
+    fouriertt = QuanticsTCI.quanticsfouriermpo(R; sign = Float64(sign), normalize = true)
+    M = MPO(fouriertt; sites=sites_MPO)
+
+    return truncate(M; cutoff)
 end
 
-function _assign!(M::MPO, n::Int, arr; autoreshape=false)
-    if autoreshape
-        arr = reshape(arr, map(dim, inds(M[n]))...)
-    end
-    M[n] = ITensor(arr, inds(M[n])...)
-    return nothing
-end
-
-"""
-For length(sites) == 1
-The resultant MPO is NOT renormalized.
-"""
-function _qft_nsite1_wo_norm(sites; sign::Int=1)
-    length(sites) == 1 || error("num sites > 1")
-    _exp(x, k) = exp(sign * im * π * (x - 1) * (k - 1))
-
-    arr = zeros(ComplexF64, 2, 2)
-    for out in 1:2, in in 1:2
-        arr[out, in] = _exp(out, in)
-    end
-
-    M = Quantics._zero_mpo(sites)
-    _assign!(M, 1, arr)
-
-    return M
-end
-
-function _qft_wo_norm(sites; cutoff::Float64=1e-14, sign::Int=1)
-    N = length(sites)
-    if N == 1
-        return _qft_nsite1_wo_norm(sites; sign=sign)
-    end
-
-    M_prev = _qft_wo_norm(sites[2:end]; cutoff=cutoff, sign=sign)
-    M_top = _qft_toplayer(sites; sign=sign)
-
-    M = _contract(M_top, M_prev)
-    ITensors.truncate!(M; cutoff=cutoff)
-
-    return M
-end
-
-function _qft_toplayer(sites; sign::Int=1)
-    N = length(sites)
-    N > 1 || error("N must be greater than 1")
-
-    tensors = []
-
-    # site = 1
-    arr = zeros(ComplexF64, 2, 2, 2)
-    for x in 1:2, k in 1:2
-        # arr: (out, in, link)
-        arr[x, k, k] = exp(sign * im * π * (x - 1) * (k - 1))
-    end
-    push!(tensors, arr)
-
-    for n in 2:N
-        ϕ = π * 0.5^(n - 1)
-        _exp(x, k) = exp(sign * im * ϕ * (x - 1) * (k - 1))
-        # Right most tensor
-        if n == N
-            # arr: (link, out, in)
-            arr = zeros(ComplexF64, 2, 2, 2)
-            for x in 1:2, k in 1:2
-                arr[k, x, x] = _exp(x, k)
-            end
-            push!(tensors, arr)
-        else
-            # arr: (link_left, out, in, link_right)
-            arr = zeros(ComplexF64, 2, 2, 2, 2)
-            for x in 1:2, k in 1:2
-                arr[k, x, x, k] = _exp(x, k)
-            end
-            push!(tensors, arr)
-        end
-    end
-
-    M = Quantics._zero_mpo(sites; linkdims=fill(2, N - 1))
-    for n in 1:N
-        _assign!(M, n, tensors[n])
-    end
-
-    return M
-end
-
-function _contract(M_top, M_prev)
-    length(M_top) == length(M_prev) + 1 || error("Length mismatch")
-    N = length(M_top)
-    M_top = ITensors.replaceprime(M_top, 1 => 2; tags="Qubit")
-    M_top = ITensors.replaceprime(M_top, 0 => 1; tags="Qubit")
-    M_top_ = ITensors.data(M_top)
-    M_prev_ = ITensors.data(M_prev)
-
-    M_data = [M_top_[1]]
-    for n in 1:(N - 1)
-        push!(M_data, M_top_[n + 1] * M_prev_[n])
-    end
-
-    M = MPO(M_data)
-    M = ITensors.replaceprime(M, 1 => 0; tags="Qubit")
-    M = ITensors.replaceprime(M, 2 => 1; tags="Qubit")
-
-    return M
-end
 
 abstract type AbstractFT end
 
