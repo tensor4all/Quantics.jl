@@ -533,46 +533,6 @@ function makesitediagonal(M::AbstractMPS, tag::String)::MPS
     return MPS(collect(M_))
 end
 
-function _makesitediagonal(
-    projmps::ProjMPS, sites::AbstractVector{Index{IndsT}}; baseplev=0
-) where {IndsT}
-    M_ = deepcopy(MPO(collect(MPS(projmps))))
-    for site in sites
-        target_site::Int = only(findsites(M_, site))
-        M_[target_site] = _asdiagonal(M_[target_site], site; baseplev=baseplev)
-    end
-    return project(M_, projmps.projector)
-end
-
-function _makesitediagonal(projmps::ProjMPS, site::Index; baseplev=0)
-    return _makesitediagonal(projmps, [site]; baseplev=baseplev)
-end
-
-function makesitediagonal(projmps::ProjMPS, site::Index)
-    return _makesitediagonal(projmps, site; baseplev=0)
-end
-
-function makesitediagonal(projmps::ProjMPS, sites::AbstractVector{Index})
-    return _makesitediagonal(projmps, sites; baseplev=0)
-end
-
-function makesitediagonal(projmps::ProjMPS, tag::String)
-    mps_diagonal = Quantics.makesitediagonal(MPS(projmps), tag)
-    projmps_diagonal = ProjMPS(mps_diagonal)
-
-    target_sites = Quantics.findallsiteinds_by_tag(
-        unique(ITensors.noprime.(Iterators.flatten(siteinds(projmps)))); tag=tag
-    )
-
-    newproj = deepcopy(projmps.projector)
-    for s in target_sites
-        if isprojectedat(projmps.projector, s)
-            newproj[ITensors.prime(s)] = newproj[s]
-        end
-    end
-
-    return project(projmps_diagonal, newproj)
-end
 
 # FIXME: may be type unstable
 function _find_site_allplevs(tensor::ITensor, site::Index; maxplev=10)
@@ -581,49 +541,6 @@ function _find_site_allplevs(tensor::ITensor, site::Index; maxplev=10)
         ITensors.prime(site, plev) for
         plev in 0:maxplev if ITensors.prime(site, plev) ∈ ITensors.inds(tensor)
     ]
-end
-
-function extractdiagonal(
-    projmps::ProjMPS, sites::AbstractVector{Index{IndsT}}
-) where {IndsT}
-    tensors = collect(projmps.data)
-    for i in eachindex(tensors)
-        for site in intersect(sites, ITensors.inds(tensors[i]))
-            sitewithallplevs = _find_site_allplevs(tensors[i], site)
-            tensors[i] = if length(sitewithallplevs) > 1
-                tensors[i] = Quantics._extract_diagonal(tensors[i], sitewithallplevs...)
-            else
-                tensors[i]
-            end
-        end
-    end
-
-    projector = deepcopy(projmps.projector)
-    for site in sites
-        if site' in keys(projector.data)
-            delete!(projector.data, site')
-        end
-    end
-    return ProjMPS(MPS(tensors), projector)
-end
-
-function extractdiagonal(projmps::ProjMPS, site::Index{IndsT}) where {IndsT}
-    return Quantics.extractdiagonal(projmps, [site])
-end
-
-function extractdiagonal(projmps::ProjMPS, tag::String)::ProjMPS
-    targetsites = Quantics.findallsiteinds_by_tag(
-        unique(ITensors.noprime.(ProjMPSs._allsites(projmps))); tag=tag
-    )
-    return extractdiagonal(projmps, targetsites)
-end
-
-function rearrange_siteinds(projmps::ProjMPS, sites)
-    return ProjMPSs.rearrange_siteinds(projmps, sites)
-end
-
-function rearrange_siteinds(bmps::BlockedMPS, sites)
-    return ProjMPSs.rearrange_siteinds(bmps, sites)
 end
 
 
@@ -680,25 +597,5 @@ end
 
 
 
-"""
-Make the BlockedMPS diagonal for a given site index `s` by introducing a dummy index `s'`.
-"""
-function makesitediagonal(obj::BlockedMPS, site)
-    return BlockedMPS([
-        _makesitediagonal(prjmps, site; baseplev=baseplev) for prjmps in values(obj)
-    ])
-end
 
-function _makesitediagonal(obj::BlockedMPS, site; baseplev=0)
-    return BlockedMPS([
-        _makesitediagonal(prjmps, site; baseplev=baseplev) for prjmps in values(obj)
-    ])
-end
 
-"""
-Extract diagonal of the BlockedMPS for `s`, `s'`, ... for a given site index `s`,
-where `s` must have a prime level of 0.
-"""
-function extractdiagonal(obj::BlockedMPS, site)
-    return BlockedMPS([extractdiagonal(prjmps, site) for prjmps in values(obj)])
-end
