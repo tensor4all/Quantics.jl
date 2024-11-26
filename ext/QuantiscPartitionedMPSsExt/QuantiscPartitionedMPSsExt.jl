@@ -7,7 +7,7 @@ import ITensors.NDTensors: Tensor, BlockSparseTensor, blockview
 using ITensorMPS: ITensorMPS, MPS, MPO, AbstractMPS
 using ITensorMPS: findsite, linkinds, linkind, findsites
 
-import Quantics: Quantics, _find_site_allplevs, combinesites, extractdiagonal
+import Quantics: Quantics, _find_site_allplevs, combinesites, extractdiagonal, _asdiagonal
 import PartitionedMPSs: PartitionedMPSs, SubDomainMPS, PartitionedMPS, isprojectedat, project
 
 function Quantics.makesitediagonal(subdmps::SubDomainMPS, site::Index)
