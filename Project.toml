@@ -9,18 +9,23 @@ FastMPOContractions = "f6e391d2-8ffa-4d7a-98cd-7e70024481ca"
 ITensorMPS = "0d1a4710-d33b-49a5-8f18-73bdf49b47e2"
 ITensors = "9136182c-28ba-11e9-034c-db9fb085ebd5"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
-ProjMPSs = "3cac4759-b6c4-45be-a543-65afe6a1360a"
 QuanticsTCI = "b11687fd-3a1c-4c41-97d0-998ab401d50e"
 SparseIR = "4fe2279e-80f0-4adb-8463-ee114ff56b7d"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 TCIITensorConversion = "9f0aa9f4-9415-4e6a-8795-331ebf40aa04"
+
+[weakdeps]
+PartitionedMPSs = "17ce1de9-5131-45e3-8a48-9723b6e2dc23"
+
+[extensions]
+QuantiscPartitionedMPSsExt = "PartitionedMPSs"
 
 [compat]
 EllipsisNotation = "1"
 FastMPOContractions = "^0.2.2"
 ITensorMPS = "0.3.1"
 ITensors = "0.7"
-ProjMPSs = "0.4.1"
+PartitionedMPSs = "0.5.2"
 QuanticsTCI = "0.7.0"
 SparseIR = "^0.96, 0.97, 1"
 StaticArrays = "1"
@@ -34,4 +39,4 @@ ReTestItems = "817f1d60-ba6b-4fd5-9520-3cf149f6a823"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test", "Random", "ReTestItems", "Aqua"]
+test = ["Test", "Random", "ReTestItems", "Aqua", "PartitionedMPSs"]

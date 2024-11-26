@@ -1,10 +1,10 @@
 @testitem "util.jl" begin
     using Test
+    import PartitionedMPSs: PartitionedMPSs, SubDomainMPS, PartitionedMPS, project, isprojectedat
     import Quantics
     using ITensors
     using ITensors.SiteTypes: siteinds
     using ITensorMPS: randomMPS, randomMPO, random_mps, MPO, MPS
-    import ProjMPSs: ProjMPSs, ProjMPS, BlockedMPS, project, isprojectedat
 
     include("_util.jl")
 
@@ -251,7 +251,7 @@
         end
     end
 
-    @testset "ProjMPS" begin
+    @testset "SubDomainMPS" begin
         @testset "rearrange_siteinds" begin
             N = 3
             sitesx = [Index(2, "x=$n") for n in 1:N]
@@ -261,7 +261,7 @@
 
             Ψ = MPS(collect(_random_mpo(sites)))
 
-            prjΨ = ProjMPS(Ψ)
+            prjΨ = SubDomainMPS(Ψ)
             prjΨ1 = project(prjΨ, Dict(sitesx[1] => 1))
 
             sitesxy = collect(collect.(zip(sitesx, sitesy)))
@@ -273,7 +273,7 @@
             prjΨ1_rearranged = Quantics.rearrange_siteinds(prjΨ1, sites_rearranged)
 
             @test reduce(*, MPS(prjΨ1)) ≈ reduce(*, MPS(prjΨ1_rearranged))
-            @test ProjMPSs.siteinds(prjΨ1_rearranged) == sites_rearranged
+            @test PartitionedMPSs.siteinds(prjΨ1_rearranged) == sites_rearranged
         end
 
         @testset "makesitediagonal and extractdiagonal" begin
@@ -288,7 +288,7 @@
 
             Ψ = MPS(collect(_random_mpo(sites)))
 
-            prjΨ = ProjMPS(Ψ)
+            prjΨ = SubDomainMPS(Ψ)
             prjΨ1 = project(prjΨ, Dict(sitesx[1] => 1))
 
             prjΨ1_diagonalz = Quantics.makesitediagonal(prjΨ1, "y")
