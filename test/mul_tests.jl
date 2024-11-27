@@ -120,11 +120,11 @@ end
 
 @testitem "mul_tests.jl/batchedmatmul" begin
     using Test
+    import PartitionedMPSs: PartitionedMPSs, SubDomainMPS, PartitionedMPS, isprojectedat, project, Projector
     import Quantics
     using ITensors
     using ITensors.SiteTypes: siteinds
     using ITensorMPS: random_mps, MPS
-    import ProjMPSs: ProjMPSs, ProjMPS, project, BlockedMPS, Projector
 
     """
     Reconstruct 3D matrix
@@ -167,7 +167,7 @@ end
         @test ab_arr ≈ ab_arr_reconst
     end
 
-    @testset "BlockedMPS" begin
+    @testset "PartitionedMPS" begin
         @testset "batchedmatmul" for T in [Float64]
             """
             C(x, z, k) = sum_y A(x, y, k) * B(y, z, k)
@@ -194,14 +194,14 @@ end
                 ab_arr[:, :, k] .= a_arr[:, :, k] * b_arr[:, :, k]
             end
 
-            a_ = BlockedMPS([
+            a_ = PartitionedMPS([
                 project(a, Projector(Dict(sx[1] => 1, sy[1] => 1))),
                 project(a, Projector(Dict(sx[1] => 1, sy[1] => 2))),
                 project(a, Projector(Dict(sx[1] => 2, sy[1] => 1))),
                 project(a, Projector(Dict(sx[1] => 2, sy[1] => 2)))
             ])
 
-            b_ = BlockedMPS([
+            b_ = PartitionedMPS([
                 project(b, Projector(Dict(sy[1] => 1, sz[1] => 1))),
                 project(b, Projector(Dict(sy[1] => 1, sz[1] => 2))),
                 project(b, Projector(Dict(sy[1] => 2, sz[1] => 1))),

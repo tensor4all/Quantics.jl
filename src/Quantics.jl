@@ -6,7 +6,6 @@ using ITensors.SiteTypes: siteinds
 import ITensors.NDTensors: Tensor, BlockSparseTensor, blockview
 using ITensorMPS: ITensorMPS, MPS, MPO, AbstractMPS
 using ITensorMPS: findsite, linkinds, linkind, findsites
-import ProjMPSs: ProjMPSs, ProjMPS, BlockedMPS, isprojectedat, project
 
 import SparseIR: Fermionic, Bosonic, Statistics
 import LinearAlgebra: I
