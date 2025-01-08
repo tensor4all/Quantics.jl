@@ -364,6 +364,39 @@ function combinesites(M::MPO, site1::Index, site2::Index)
     return MPO(tensors)
 end
 
+
+function combinesites(
+    sites::Vector{Vector{Index{IndsT}}},
+    site1::AbstractVector{Index{IndsT}},
+    site2::AbstractVector{Index{IndsT}},
+) where {IndsT}
+    length(site1) == length(site2) || error("Length mismatch")
+    for (s1, s2) in zip(site1, site2)
+        sites = combinesites(sites, s1, s2)
+    end
+    return sites
+end
+
+function combinesites(
+    sites::Vector{Vector{Index{IndsT}}}, site1::Index, site2::Index
+) where {IndsT}
+    sites = deepcopy(sites)
+    p1 = findfirst(x -> x[1] == site1, sites)
+    p2 = findfirst(x -> x[1] == site2, sites)
+    if p1 === nothing || p2 === nothing
+        error("Site not found")
+    end
+    if abs(p1 - p2) != 1
+        error("Sites are not adjacent")
+    end
+    deleteat!(sites, min(p1, p2))
+    deleteat!(sites, min(p1, p2))
+    insert!(sites, min(p1, p2), [site1, site2])
+    return sites
+end
+
+
+
 function directprod(::Type{T}, sites, indices) where {T}
     length(sites) == length(indices) || error("Length mismatch between sites and indices")
     any(0 .== indices) && error("indices must be 1-based")
@@ -383,7 +416,8 @@ function _find_target_sites(M::MPS; sitessrc=nothing, tag="")
     _find_target_sites(siteinds(M); sitessrc, tag)
 end
 
-function _find_target_sites(sites::AbstractVector{Index{T}}; sitessrc=nothing, tag="") where {T}
+function _find_target_sites(
+        sites::AbstractVector{Index{T}}; sitessrc=nothing, tag="") where {T}
     if tag == "" && sitessrc === nothing
         error("tag or sitesrc must be specified")
     elseif tag != "" && sitessrc !== nothing
@@ -396,7 +430,7 @@ function _find_target_sites(sites::AbstractVector{Index{T}}; sitessrc=nothing, t
         target_sites = [sites[p] for p in sitepos]
     elseif sitessrc !== nothing
         target_sites = sitessrc
-        sitepos = Int[findfirst(x->x==s, sites) for s in sitessrc]
+        sitepos = Int[findfirst(x -> x == s, sites) for s in sitessrc]
     end
 
     return sitepos, target_sites
@@ -499,6 +533,18 @@ function makesitediagonal(M::AbstractMPS, tag::String)::MPS
     return MPS(collect(M_))
 end
 
+
+# FIXME: may be type unstable
+function _find_site_allplevs(tensor::ITensor, site::Index; maxplev=10)
+    ITensors.plev(site) == 0 || error("Site index must be unprimed.")
+    return [
+        ITensors.prime(site, plev) for
+        plev in 0:maxplev if ITensors.prime(site, plev) ∈ ITensors.inds(tensor)
+    ]
+end
+
+
+
 """
 Extract diagonal components
 """
@@ -525,4 +571,27 @@ function _extract_diagonal(t, site::Index{T}, site2::Index{T}) where {T<:Number}
         newdata[.., i] = olddata[.., i, i]
     end
     return ITensor(newdata, restinds..., site)
+end
+
+function _apply(A::MPO, Ψ::MPO; alg::String="fit", cutoff::Real=1e-25, kwargs...)::MPO
+    if :algorithm ∈ keys(kwargs)
+        error("keyword argument :algorithm is not allowed")
+    end
+    if alg == "densitymatrix" && cutoff <= 1e-10
+        @warn "cutoff is too small for densitymatrix algorithm. Use fit algorithm instead."
+    end
+    AΨ = replaceprime(
+        FastMPOContractions.contract_mpo_mpo(A', asMPO(Ψ); alg, kwargs...), 2 => 1)
+    MPO(collect(AΨ))
+end
+
+function _apply(A::MPO, Ψ::MPS; alg::String="fit", cutoff::Real=1e-25, kwargs...)::MPS
+    if :algorithm ∈ keys(kwargs)
+        error("keyword argument :algorithm is not allowed")
+    end
+    if alg == "densitymatrix" && cutoff <= 1e-10
+        @warn "cutoff is too small for densitymatrix algorithm. Use fit algorithm instead."
+    end
+    AΨ = noprime.(FastMPOContractions.contract_mpo_mpo(A, asMPO(Ψ); alg, kwargs...))
+    MPS(collect(AΨ))
 end

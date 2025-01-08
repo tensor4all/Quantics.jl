@@ -128,9 +128,8 @@ function affinetransform(M::MPS,
         bc::AbstractVector{Int};
         kwargs...)
     transformer = affinetransformmpo(siteinds(M), tags, coeffs_dic, shift, bc)
-    return apply(transformer, M; kwargs...)
+    return _apply(transformer, M; kwargs...)
 end
-
 
 function affinetransformmpo(sites::AbstractVector{Index{T}},
         tags::AbstractVector{String},
@@ -176,12 +175,11 @@ function affinetransformmpo(sites::AbstractVector{Index{T}},
     # Contract MPOs
     res = mpos[1]
     for n in 2:length(mpos)
-        res = apply(mpos[n], res; cutoff=1e-25, maxdim=typemax(Int))
+        res = _apply(mpos[n], res; cutoff=1e-25, maxdim=typemax(Int))
     end
 
     return res
 end
-
 
 """
 Affine transform of a MPS with no shift
@@ -193,7 +191,7 @@ function affinetransform(M::MPS,
         bc::AbstractVector{Int};
         kwargs...)
     transformer = affinetransformmpo(siteinds(M), tags, coeffs_dic, bc)
-    return apply(transformer, M; kwargs...)
+    return _apply(transformer, M; kwargs...)
 end
 
 """
@@ -307,7 +305,7 @@ function affinetransformmpo(sites::AbstractVector{Index{T}},
     # Contract MPOs
     res = mpos[1]
     for n in 2:length(mpos)
-        res = apply(mpos[n], res; cutoff=1e-25, maxdim=typemax(Int))
+        res = _apply(mpos[n], res; cutoff=1e-25, maxdim=typemax(Int))
     end
 
     return res
@@ -371,7 +369,7 @@ function _binaryop_mpo(sites::Vector{Index{T}},
         end
         M_ = bc[i] *
              flipop(sites[i:nsites_bop:end]; rev_carrydirec=rev_carrydirec, bc=bc[i])
-        M = apply(M, matchsiteinds(M_, sites); cutoff=1e-25)
+        M = _apply(M, matchsiteinds(M_, sites); cutoff=1e-25)
     end
 
     return M

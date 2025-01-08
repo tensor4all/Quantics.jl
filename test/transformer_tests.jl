@@ -3,6 +3,8 @@
     using Test
     import Quantics
     using ITensors
+    using ITensors.SiteTypes: siteinds
+    using ITensorMPS: randomMPS
     using LinearAlgebra
 
     @testset "upper_lower_triangle" for upper_or_lower in [:upper, :lower]
@@ -59,6 +61,7 @@ end
     using Test
     import Quantics
     using ITensors
+    using ITensorMPS: randomMPS
     using LinearAlgebra
 
     @testset "reverseaxis" for bc in [1], nbit in 2:2, rev_carrydirec in [true, false]
@@ -166,8 +169,6 @@ end
         @test fz_reconst ≈ fz_ref
     end
 
-
-
     #==
     @testset "asdiagonal" begin
         R = 2
@@ -194,6 +195,7 @@ end
     using Test
     import Quantics
     using ITensors
+    using ITensorMPS: randomMPS
     using LinearAlgebra
 
     @testset "phase_rotation" begin
@@ -211,13 +213,13 @@ end
         @test ref ≈ _reconst(Quantics.phase_rotation(f, θ; tag="x"))
         @test ref ≈ _reconst(Quantics.phase_rotation(f, θ; targetsites=sites))
     end
-
 end
 
 @testitem "transformer_tests.jl/shiftaxis" begin
     using Test
     import Quantics
     using ITensors
+    using ITensorMPS: randomMPS
     using LinearAlgebra
 
     @testset "shiftaxis" for R in [3], bc in [1, -1], rev_carrydirec in [true, false]

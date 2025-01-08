@@ -70,15 +70,17 @@ end
 """
 Convert an MPS tensor to an MPO tensor with a diagonal structure
 """
-function _asdiagonal(t, site::Index{T})::ITensor where {T<:Number}
-    hasinds(t, site') && error("Found $(site')")
-    links = uniqueinds(inds(t), site)
+function _asdiagonal(t, site::Index{T}; baseplev=0)::ITensor where {T<:Number}
+    ITensors.hasinds(t, site') && error("Found $(site')")
+    links = ITensors.uniqueinds(ITensors.inds(t), site)
     rawdata = Array(t, links..., site)
-    tensor = zeros(eltype(t), size(rawdata)..., dim(site))
-    for i in 1:dim(site)
+    tensor = zeros(eltype(t), size(rawdata)..., ITensors.dim(site))
+    for i in 1:ITensors.dim(site)
         tensor[.., i, i] = rawdata[.., i]
     end
-    return ITensor(tensor, links..., site', site)
+    return ITensor(
+        tensor, links..., ITensors.prime(site, baseplev + 1), ITensors.prime(site, baseplev)
+    )
 end
 
 function _todense(t, site::Index{T}) where {T<:Number}

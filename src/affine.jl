@@ -1,14 +1,24 @@
 """
     affine_transform_mpo(outsite, insite, A, b)
 
-Constructs an ITensor matrix product state for an affine transform in the
+Constructs an ITensor matrix product state for the affine transformation `y = A*x + b` in the
 quantics representation.
+
+# Arguments
+- `outsite::AbstractMatrix{<:Index}`: The output site indices for the ITensor.
+- `insite::AbstractMatrix{<:Index}`: The input site indices for the ITensor.
+- `A::AbstractMatrix{<:Union{Integer,Rational}}`: The matrix representing the linear transformation.
+- `b::AbstractVector{<:Union{Integer,Rational}}`: The vector representing the translation in the affine transformation.
+- `little_endian::Bool=false`: Whether the input and output bits are in little-endian order.
+
+# Returns
+- `MPO`: The resulting matrix product operator representing the affine transformation.
 """
 function affine_transform_mpo(
             outsite::AbstractMatrix{<:Index}, insite::AbstractMatrix{<:Index},
             A::AbstractMatrix{<:Union{Integer,Rational}},
             b::AbstractVector{<:Union{Integer,Rational}}
-            )
+            )::MPO
     R = size(outsite, 1)
     M, N = size(A)
     size(insite) == (R, N) ||
@@ -176,7 +186,7 @@ end
 
 function affine_mpo_to_matrix(
             outsite::AbstractMatrix{<:Index}, insite::AbstractMatrix{<:Index},
-            mpo::ITensors.MPO)
+            mpo::MPO)
     prev_warn_order = ITensors.disable_warn_order()
     try
         mpo_contr = reduce(*, mpo)
