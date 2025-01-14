@@ -1,28 +1,38 @@
 """
-    affine_transform_mpo(outsite, insite, A, b)
+    affine_transform_mpo(y, x, A, b)
 
-Constructs an ITensor matrix product state for the affine transformation `y = A*x + b` in the
-quantics representation.
+Construct and return ITensor matrix product state for the affine transformation
+`y = A*x + b` in a (fused) quantics representation:
 
-# Arguments
-- `outsite::AbstractMatrix{<:Index}`: The output site indices for the ITensor.
-- `insite::AbstractMatrix{<:Index}`: The input site indices for the ITensor.
-- `A::AbstractMatrix{<:Union{Integer,Rational}}`: The matrix representing the linear transformation.
-- `b::AbstractVector{<:Union{Integer,Rational}}`: The vector representing the translation in the affine transformation.
-- `little_endian::Bool=false`: Whether the input and output bits are in little-endian order.
+    y[1,1] ... y[1,M]    y[2,1] ... y[2,M]            y[R,1] ... y[R,M]
+     __|__________|__     __|__________|__             __|__________|__
+    |                |   |                |           |                |
+    |      T[1]      |---|      T[2]      |--- ... ---|      T[R]      |
+    |________________|   |________________|           |________________|
+       |          |         |          |                 |          |
+    x[1,1] ... x[1,N]    x[2,1] ... x[2,N]            x[R,1] ... x[R,N]
 
-# Returns
-- `MPO`: The resulting matrix product operator representing the affine transformation.
+
+Arguments
+---------
+- `y`: An `R × M` matrix of ITensor indices, where `y[r,m]` corresponds to
+  the `r`-th length scale of the `m`-th output variable.
+- `x`: An `R × N` matrix of ITensor indices, where `x[r,n]` corresponds to
+  the `r`-th length scale of the `n`-th input variable.
+- `A`: An `M × N` rational matrix representing the linear transformation.
+- `b`: An `M` reational vector representing the translation.
 """
 function affine_transform_mpo(
-            outsite::AbstractMatrix{<:Index}, insite::AbstractMatrix{<:Index},
+            y::AbstractMatrix{<:Index}, x::AbstractMatrix{<:Index},
             A::AbstractMatrix{<:Union{Integer,Rational}},
             b::AbstractVector{<:Union{Integer,Rational}}
             )::MPO
-    R = size(outsite, 1)
+    R = size(y, 1)
     M, N = size(A)
-    size(insite) == (R, N) ||
+    size(x) == (R, N) ||
         throw(ArgumentError("insite is not correctly dimensioned"))
+    size(y) == (R, M) ||
+        throw(ArgumentError("outsite is not correctly dimensioned"))
     size(b) == (M,) ||
         throw(ArgumentError("vector is not correctly dimensioned"))
 
@@ -36,14 +46,14 @@ function affine_transform_mpo(
     mpo = MPO(R)
     spin_dims = ntuple(_ -> 2, M + N)
     mpo[1] = ITensor(reshape(tensors[1], size(tensors[1], 2), spin_dims...),
-                     (link[1], outsite[1,:]..., insite[1,:]...))
+                     (link[1], y[1,:]..., x[1,:]...))
     for r in 2:R-1
         newshape = size(tensors[r])[1:2]..., spin_dims...
         mpo[r] = ITensor(reshape(tensors[r], newshape),
-                         (link[r-1], link[r], outsite[r,:]..., insite[r,:]...))
+                         (link[r-1], link[r], y[r,:]..., x[r,:]...))
     end
     mpo[R] = ITensor(reshape(tensors[R], size(tensors[R], 1), spin_dims...),
-                     (link[R-1], outsite[R,:]..., insite[R,:]...))
+                     (link[R-1], y[R,:]..., x[R,:]...))
     return mpo
 end
 
