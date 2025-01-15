@@ -4,6 +4,16 @@
     using Quantics
     using LinearAlgebra
 
+    @testset "mod_inverse" begin
+        @test_throws DomainError Quantics.modular_inverse(423, -1)
+        @test_throws DomainError Quantics.modular_inverse(80, 10)
+
+        @test Quantics.modular_inverse(1, 5) == 1
+        @test Quantics.modular_inverse(77, 8) isa Signed
+        @test (Quantics.modular_inverse(77, 8) * 77) & 0xFF == 1
+        @test (Quantics.modular_inverse(-49, 7) * -49) & 0x7F == 1
+    end
+
     vars = ("x", "y", "z")
     insite = [Index(2; tags="$v$l") for l in 1:10, v in vars]
     outsite = [Index(2; tags="$v$l")' for l in 1:10, v in vars]

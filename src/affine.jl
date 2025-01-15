@@ -287,3 +287,30 @@ digits_to_number(v::AbstractVector{<:Integer}, bits::Integer) =
         throw(DomainError(v[1], "invalid digit in base $(1 << bits)"))
     return _digits_to_number(v[2:end], bits) << bits | v[1]
 end
+
+"""
+    modular_inverse(b, m)
+
+Compute the multiplicative inverse of an integer `b` modulo `2^m`, i.e., find
+and return an integer `x` such that:
+
+    x * b ≡ 1  (mod 2^m)
+"""
+function modular_inverse(b::Integer, m::Integer)
+    0 <= m <= 8 * sizeof(b) ||
+        throw(DomainError(m, "invalid number of bits"))
+    isodd(b) ||
+        throw(DomainError(b, "only odd numbers have inverses mod power of 2"))
+
+    # Use Dusse and Kaliski's algorithm, as reproduced in
+    # Arazi and Qi, IEEE Trans. Comput. 57, 10 (2008), Algorithm 1
+    mask = one(b)
+    y = one(b)
+    for _ in 2:m
+        mask <<= 1
+        if (b * y) & mask != 0
+            y |= mask
+        end
+    end
+    return y
+end
