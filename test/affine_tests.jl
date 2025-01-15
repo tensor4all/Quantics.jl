@@ -70,4 +70,17 @@
         @test T == Trec
     end
 
+    @testset "compare_denom_odd" begin
+        A = reshape([1//3], 1, 1)
+        b = [0]
+        R = 6
+
+        T = Quantics.affine_transform_matrix(R, A, b)
+        mpo = Quantics.affine_transform_mpo(
+                    outsite[1:R, 1:1], insite[1:R, 1:1], A, b)
+        Trec = Quantics.affine_mpo_to_matrix(
+                    outsite[1:R, 1:1], insite[1:R, 1:1], mpo)
+        @test T == Trec
+    end
+
 end

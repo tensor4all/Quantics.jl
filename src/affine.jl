@@ -74,10 +74,18 @@ function affine_transform_tensors(
             R::Int, A::SMatrix{M, N, Int}, b::SVector{M, Int}, s::Int
             ) where {M, N}
     # Checks
-    0 <= R ||
+    0 <= R <= 8 * sizeof(Int) ||
         throw(DomainError(R, "invalid value of the length R"))
-    s == 1 ||
+    isodd(s) ||
         throw(DomainError(s, "must be one for now"))
+
+    # We are currently assuming periodic boundary conditions and s being odd.
+    # Then there is a multiplicative inverse such that inv_s * s ≡ 1 (mod 2^R)
+    # This lets us rewrite: 1/s * (A*x + b) to inv_s*(A*x + b)
+    base = 1 << R
+    inv_s = modular_inverse(s, base)
+    A = inv_s * A
+    b = inv_s * b
 
     # The output tensors are a collection of matrices, but their first two
     # dimensions (links) vary
@@ -91,7 +99,7 @@ function affine_transform_tensors(
         bcurr = @. Bool(b & 1)
 
         # Get tensor.
-        new_carry, data = affine_transform_core(A, bcurr, s, carry)
+        new_carry, data = affine_transform_core(A, bcurr, carry)
 
         # For the first tensor, we assume periodic boundary conditions, so
         # we sum over all choices off the carry
@@ -125,9 +133,10 @@ are the binary input and output vectors, respectively, of the affine transform.
 They are indexed in a "little-endian" fashion.
 """
 function affine_transform_core(
-            A::SMatrix{M, N, Int}, b::SVector{M, Bool}, s::Int,
+            A::SMatrix{M, N, Int}, b::SVector{M, Bool},
             carry::AbstractVector{SVector{M, Int}}
             ) where {M, N}
+
     # The basic idea here is the following: we compute r = A*x + b + c
     # for all "incoming" carrys d and all possible bit vectors, x ∈ {0,1}^N.
     # Then we decompose r = 2*c + y, where y is again a bit vector, y ∈ {0,1}^M,
@@ -173,23 +182,21 @@ end
 
 function affine_transform_matrix(
             R::Int, A::SMatrix{M, N, Int}, b::SVector{M, Int},
-            denom::Int) where {M, N}
+            s::Int) where {M, N}
     # Checks
     0 <= R ||
         throw(DomainError(R, "invalid value of the length R"))
+    isodd(s) ||
+        throw(DomainError(s, "right now we only support odd s"))
 
-    mask = (1 << R) - 1
+    mask = ~(~0 << R)
+    inv_s = modular_inverse(s, R)
     y_index = Int[]
     x_index = Int[]
 
     for (ix, x) in enumerate(Iterators.product(ntuple(_ -> 0:mask, N)...))
-        z = A * SVector{N, Int}(x) + b
-        all(iszero, z .% denom) ||
-            continue
-
-        # XXX there is an ambiguity here: shall we divide first, then do
-        #     modulo, or the other way 'round?
-        y = @. (z ÷ denom) & mask
+        yfull = inv_s * (A * SVector{N, Int}(x) + b)
+        y = yfull .& mask
         iy = digits_to_number(y, R) + 1
         push!(y_index, iy)
         push!(x_index, ix)
