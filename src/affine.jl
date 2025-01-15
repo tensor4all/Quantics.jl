@@ -61,7 +61,8 @@ end
     affine_transform_tensors(R, A, b)
 
 Compute vector of core tensors (constituent 4-way tensors) for a matrix product
-operator corresponding to the affine transformation `y = A*x + b`.
+operator corresponding to one of affine transformation `y = A*x + b` with
+rational `A` and `b`
 """
 function affine_transform_tensors(
             R::Integer, A::AbstractMatrix{<:Union{Integer,Rational}},
@@ -70,13 +71,13 @@ function affine_transform_tensors(
 end
 
 function affine_transform_tensors(
-            R::Int, A::SMatrix{M, N, Int}, b::SVector{M, Int}, denom::Int
+            R::Int, A::SMatrix{M, N, Int}, b::SVector{M, Int}, s::Int
             ) where {M, N}
     # Checks
     0 <= R ||
         throw(DomainError(R, "invalid value of the length R"))
-    denom == 1 ||
-        throw(ArgumentError("XXX only denominator one supported for now"))
+    s == 1 ||
+        throw(DomainError(s, "must be one for now"))
 
     # The output tensors are a collection of matrices, but their first two
     # dimensions (links) vary
@@ -89,11 +90,16 @@ function affine_transform_tensors(
         # it out from the array
         bcurr = @. Bool(b & 1)
 
-        # Get tensor. For the first tensor, we discard the carry.
-        out_tf = (r == 1) ? zero : identity
-        new_carry, data = affine_transform_core(A, bcurr, carry,
-                                                transform_out_carry=out_tf)
-        tensors[r] = data
+        # Get tensor.
+        new_carry, data = affine_transform_core(A, bcurr, s, carry)
+
+        # For the first tensor, we assume periodic boundary conditions, so
+        # we sum over all choices off the carry
+        if r == 1
+            tensors[r] = sum(data, dims=1)
+        else
+            tensors[r] = data
+        end
 
         # Set carry to the next value
         carry = new_carry
@@ -103,14 +109,13 @@ function affine_transform_tensors(
 end
 
 """
-    core, out_carry = affine_transform_core(A, b, in_carry;
-                                            transform_out_carry=identity)
+    core, out_carry = affine_transform_core(A, b, s, in_carry)
 
 Construct core tensor `core` for an affine transform.  The core tensor for an
 affine transformation is given by:
 
     core[d, c, iy, ix] =
-        2 * out_carry[d] + y[iy] == A * x[ix] + b + in_carry[c]
+        2 * out_carry[d] + s * y[iy] == A * x[ix] + b + in_carry[c]
 
 where `A`, a matrix of integers, and `b`, a vector of bits, which define the
 affine transform. `c` and `d` are indices into a set of integer vectors
@@ -120,9 +125,8 @@ are the binary input and output vectors, respectively, of the affine transform.
 They are indexed in a "little-endian" fashion.
 """
 function affine_transform_core(
-            A::SMatrix{M, N, Int}, b::SVector{M, Bool},
-            carry::AbstractVector{SVector{M, Int}};
-            transform_out_carry::Function=identity
+            A::SMatrix{M, N, Int}, b::SVector{M, Bool}, s::Int,
+            carry::AbstractVector{SVector{M, Int}}
             ) where {M, N}
     # The basic idea here is the following: we compute r = A*x + b + c
     # for all "incoming" carrys d and all possible bit vectors, x ∈ {0,1}^N.
@@ -135,7 +139,7 @@ function affine_transform_core(
         for (x_index, x) in enumerate(Iterators.product(ntuple(_ -> 0:1, N)...))
             r = A * SVector{N, Bool}(x) + b + SVector{M, Int}(c)
             y = @. Bool(r & 1)
-            d::SVector{M, Int} = transform_out_carry(r .>> 1)
+            d = r .>> 1
             y_index = digits_to_number(y) + 1
 
             d_mat = get!(out, d) do
