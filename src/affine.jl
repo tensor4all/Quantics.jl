@@ -170,19 +170,33 @@ function affine_transform_core(
 end
 
 """
-    affine_transform_matrix(R, A, b)
+    affine_transform_matrix(R, A, b; periodic=true)
 
-Compute full transformation matrix for `y = A*x + b`.
+Compute full transformation matrix for the affine transformation `y = A*x + b`,
+where `y` is a `M`-vector and `x` is `N`-vector, and each component is in
+`{0, 1, ..., 2^R-1}`. `A` is a rational `M × N` matrix and `b` is a rational
+`N`-vector.
+
+Return a boolean sparse `2^(R*M) × 2^(R*N)` matrix `A`, which has true entries
+whereever the condition is satisfied. The element indices `A[iy, ix]` are
+mapped to `x` and `y` as follows:
+
+    iy = 1 + y[1] + y[2] * 2^R + y[3] * 2^(2R) + ... + y[M] * 2^((M-1)*R)
+    ix = 1 + x[1] + x[2] * 2^R + x[3] * 2^(2R) + ... + x[N] * 2^((N-1)*R)
+
+If `periodic` is true, then periodic boundary conditions, `y[i] + 2^R = y[i]`,
+are used.
 """
 function affine_transform_matrix(
             R::Integer, A::AbstractMatrix{<:Union{Integer,Rational}},
-            b::AbstractVector{<:Union{Integer,Rational}})
-    return affine_transform_matrix(Int(R), _affine_static_args(A, b)...)
+            b::AbstractVector{<:Union{Integer,Rational}}; periodic::Bool=true
+            )
+    return affine_transform_matrix(Int(R), _affine_static_args(A, b)..., periodic)
 end
 
 function affine_transform_matrix(
             R::Int, A::SMatrix{M, N, Int}, b::SVector{M, Int},
-            s::Int) where {M, N}
+            s::Int, periodic::Bool) where {M, N}
     # Checks
     0 <= R ||
         throw(DomainError(R, "invalid value of the length R"))
@@ -195,8 +209,14 @@ function affine_transform_matrix(
     x_index = Int[]
 
     for (ix, x) in enumerate(Iterators.product(ntuple(_ -> 0:mask, N)...))
-        yfull = inv_s * (A * SVector{N, Int}(x) + b)
-        y = yfull .& mask
+        v = A * SVector{N, Int}(x) + b
+        if periodic
+            v *= inv_s
+            y = v .& mask
+        else
+            iszero(v .% s) || continue
+            y = v .÷ s
+        end
         iy = digits_to_number(y, R) + 1
         push!(y_index, iy)
         push!(x_index, ix)
