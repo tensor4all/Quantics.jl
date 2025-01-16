@@ -6,23 +6,19 @@ boundaries and `PeriodicBoundaryConditions` for periodic ones.
 """
 abstract type AbstractBoundaryConditions end
 
-struct PeriodicBoundaryConditions <: AbstractBoundaryConditions
-    R::Int
+struct PeriodicBoundaryConditions <: AbstractBoundaryConditions end
+
+@inline function matching_y(v, s, R, ::PeriodicBoundaryConditions)
+    mask = ~(~0 << R)
+    inv_s = invmod_pow2(s, R)
+    return (v * inv_s) .& mask
 end
 
-@inline function divide(x, s, bc::PeriodicBoundaryConditions)
-    mask = ~(~0 << bc.R)
-    inv_s = invmod_pow2(s, bc.R)
-    return (x * inv_s) .& mask
-end
+struct OpenBoundaryConditions <: AbstractBoundaryConditions end
 
-struct OpenBoundaryConditions <: AbstractBoundaryConditions
-    R::Int
-end
-
-function divide(x, s, bc::OpenBoundaryConditions)
-    invmask = ~0 << bc.R
-    return iszero(x .& invmask) && iszero(x .% s) ? x .÷ s : nothing
+@inline function matching_y(v, s, R, ::OpenBoundaryConditions)
+    invmask = ~0 << R
+    return iszero(v .& invmask) && iszero(v .% s) ? v .÷ s : nothing
 end
 
 """
@@ -216,7 +212,7 @@ mapped to `x` and `y` as follows:
 function affine_transform_matrix(
             R::Integer, A::AbstractMatrix{<:Union{Integer,Rational}},
             b::AbstractVector{<:Union{Integer,Rational}},
-            boundary::AbstractBoundaryConditions=PeriodicBoundaryConditions(R)
+            boundary::AbstractBoundaryConditions=PeriodicBoundaryConditions()
             )
     return affine_transform_matrix(Int(R), _affine_static_args(A, b)..., boundary)
 end
@@ -233,10 +229,13 @@ function affine_transform_matrix(
     mask = ~(~0 << R)
     y_index = Int[]
     x_index = Int[]
+    sizehint!(y_index, 1 << (R * N))
+    sizehint!(x_index, 1 << (R * N))
 
+    # XXX: we actually need to iterate whatever dimension is largest
     for (ix, x) in enumerate(Iterators.product(ntuple(_ -> 0:mask, N)...))
         v = A * SVector{N, Int}(x) + b
-        y = divide(v, s, boundary)
+        y = matching_y(v, s, R, boundary)
         if isnothing(y)
             continue
         else
