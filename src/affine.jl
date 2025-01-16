@@ -1,4 +1,31 @@
 """
+    AbstractBoundaryConditions
+
+Boundary conditions for the QTT to use. Use `OpenBoundaryCondtions`` for open
+boundaries and `PeriodicBoundaryConditions` for periodic ones.
+"""
+abstract type AbstractBoundaryConditions end
+
+struct PeriodicBoundaryConditions <: AbstractBoundaryConditions
+    R::Int
+end
+
+@inline function divide(x, s, bc::PeriodicBoundaryConditions)
+    mask = ~(~0 << bc.R)
+    inv_s = invmod_pow2(s, bc.R)
+    return (x * inv_s) .& mask
+end
+
+struct OpenBoundaryConditions <: AbstractBoundaryConditions
+    R::Int
+end
+
+function divide(x, s, bc::OpenBoundaryConditions)
+    invmask = ~0 << bc.R
+    return iszero(x .& invmask) && iszero(x .% s) ? x .÷ s : nothing
+end
+
+"""
     affine_transform_mpo(y, x, A, b)
 
 Construct and return ITensor matrix product state for the affine transformation
@@ -170,7 +197,7 @@ function affine_transform_core(
 end
 
 """
-    affine_transform_matrix(R, A, b; periodic=true)
+    affine_transform_matrix(R, A, b, [boundary])
 
 Compute full transformation matrix for the affine transformation `y = A*x + b`,
 where `y` is a `M`-vector and `x` is `N`-vector, and each component is in
@@ -184,19 +211,19 @@ mapped to `x` and `y` as follows:
     iy = 1 + y[1] + y[2] * 2^R + y[3] * 2^(2R) + ... + y[M] * 2^((M-1)*R)
     ix = 1 + x[1] + x[2] * 2^R + x[3] * 2^(2R) + ... + x[N] * 2^((N-1)*R)
 
-If `periodic` is true, then periodic boundary conditions, `y[i] + 2^R = y[i]`,
-are used.
+`boundary` specifies the type of boundary conditions.
 """
 function affine_transform_matrix(
             R::Integer, A::AbstractMatrix{<:Union{Integer,Rational}},
-            b::AbstractVector{<:Union{Integer,Rational}}; periodic::Bool=true
+            b::AbstractVector{<:Union{Integer,Rational}},
+            boundary::AbstractBoundaryConditions=PeriodicBoundaryConditions(R)
             )
-    return affine_transform_matrix(Int(R), _affine_static_args(A, b)..., periodic)
+    return affine_transform_matrix(Int(R), _affine_static_args(A, b)..., boundary)
 end
 
 function affine_transform_matrix(
             R::Int, A::SMatrix{M, N, Int}, b::SVector{M, Int},
-            s::Int, periodic::Bool) where {M, N}
+            s::Int, boundary::AbstractBoundaryConditions) where {M, N}
     # Checks
     0 <= R ||
         throw(DomainError(R, "invalid value of the length R"))
@@ -204,22 +231,19 @@ function affine_transform_matrix(
         throw(DomainError(s, "right now we only support odd s"))
 
     mask = ~(~0 << R)
-    inv_s = invmod_pow2(s, R)
     y_index = Int[]
     x_index = Int[]
 
     for (ix, x) in enumerate(Iterators.product(ntuple(_ -> 0:mask, N)...))
         v = A * SVector{N, Int}(x) + b
-        if periodic
-            v *= inv_s
-            y = v .& mask
+        y = divide(v, s, boundary)
+        if isnothing(y)
+            continue
         else
-            iszero(v .% s) || continue
-            y = v .÷ s
+            iy = digits_to_number(y, R) + 1
+            push!(y_index, iy)
+            push!(x_index, ix)
         end
-        iy = digits_to_number(y, R) + 1
-        push!(y_index, iy)
-        push!(x_index, ix)
     end
     values = ones(Bool, size(x_index))
     return sparse(y_index, x_index, values, 1 << (R*M), 1 << (R*N))
