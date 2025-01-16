@@ -14,6 +14,8 @@ struct PeriodicBoundaryConditions <: AbstractBoundaryConditions end
     return (v * inv_s) .& mask
 end
 
+carry_weight(c, ::PeriodicBoundaryConditions) = true
+
 struct OpenBoundaryConditions <: AbstractBoundaryConditions end
 
 @inline function matching_y(v, s, R, ::OpenBoundaryConditions)
@@ -21,8 +23,10 @@ struct OpenBoundaryConditions <: AbstractBoundaryConditions end
     return iszero(v .& invmask) && iszero(v .% s) ? v .÷ s : nothing
 end
 
+carry_weight(c, ::OpenBoundaryConditions) = iszero(c)
+
 """
-    affine_transform_mpo(y, x, A, b)
+    affine_transform_mpo(y, x, A, b, [boundary])
 
 Construct and return ITensor matrix product state for the affine transformation
 `y = A*x + b` in a (fused) quantics representation:
@@ -44,11 +48,13 @@ Arguments
   the `r`-th length scale of the `n`-th input variable.
 - `A`: An `M × N` rational matrix representing the linear transformation.
 - `b`: An `M` reational vector representing the translation.
+- `boundary`: boundary conditions (defaults to `PeriodicBoundaryConditions()`)
 """
 function affine_transform_mpo(
             y::AbstractMatrix{<:Index}, x::AbstractMatrix{<:Index},
             A::AbstractMatrix{<:Union{Integer,Rational}},
-            b::AbstractVector{<:Union{Integer,Rational}}
+            b::AbstractVector{<:Union{Integer,Rational}},
+            boundary::AbstractBoundaryConditions=PeriodicBoundaryConditions()
             )::MPO
     R = size(y, 1)
     M, N = size(A)
@@ -60,7 +66,7 @@ function affine_transform_mpo(
         throw(ArgumentError("vector is not correctly dimensioned"))
 
     # get the tensors so that we know how large the links must be
-    tensors = affine_transform_tensors(R, A, b)
+    tensors = affine_transform_tensors(R, A, b, boundary)
 
     # Create the links
     link = [Index(size(tensors[r], 2), tags="link $r") for r in 1:R-1]
@@ -81,7 +87,7 @@ function affine_transform_mpo(
 end
 
 """
-    affine_transform_tensors(R, A, b)
+    affine_transform_tensors(R, A, b, [boundary])
 
 Compute vector of core tensors (constituent 4-way tensors) for a matrix product
 operator corresponding to one of affine transformation `y = A*x + b` with
@@ -89,26 +95,33 @@ rational `A` and `b`
 """
 function affine_transform_tensors(
             R::Integer, A::AbstractMatrix{<:Union{Integer,Rational}},
-            b::AbstractVector{<:Union{Integer,Rational}})
-    return affine_transform_tensors(Int(R), _affine_static_args(A, b)...)
+            b::AbstractVector{<:Union{Integer,Rational}},
+            boundary::AbstractBoundaryConditions=PeriodicBoundaryConditions())
+    return affine_transform_tensors(
+                Int(R), _affine_static_args(A, b)..., boundary)
 end
 
 function affine_transform_tensors(
-            R::Int, A::SMatrix{M, N, Int}, b::SVector{M, Int}, s::Int
-            ) where {M, N}
+            R::Int, A::SMatrix{M, N, Int}, b::SVector{M, Int}, s::Int,
+            boundary::AbstractBoundaryConditions) where {M, N}
     # Checks
     0 <= R <= 8 * sizeof(Int) ||
         throw(DomainError(R, "invalid value of the length R"))
-    isodd(s) ||
-        throw(DomainError(s, "must be one for now"))
 
     # We are currently assuming periodic boundary conditions and s being odd.
     # Then there is a multiplicative inverse such that inv_s * s ≡ 1 (mod 2^R)
     # This lets us rewrite: 1/s * (A*x + b) to inv_s*(A*x + b)
-    base = 1 << R
-    inv_s = invmod_pow2(s, base)
-    A = inv_s * A
-    b = inv_s * b
+    if boundary isa PeriodicBoundaryConditions
+        isodd(s) ||
+            throw(DomainError(s, "must be odd for now"))
+        base = 1 << R
+        inv_s = invmod_pow2(s, base)
+        A = inv_s * A
+        b = inv_s * b
+    else
+        isone(s) ||
+            throw(DomainError(s, "must be one for now"))
+    end
 
     # The output tensors are a collection of matrices, but their first two
     # dimensions (links) vary
@@ -124,10 +137,11 @@ function affine_transform_tensors(
         # Get tensor.
         new_carry, data = affine_transform_core(A, bcurr, carry)
 
-        # For the first tensor, we assume periodic boundary conditions, so
-        # we sum over all choices off the carry
         if r == 1
-            tensors[r] = sum(data, dims=1)
+            # For the first tensor, we examine the carry to see which elements
+            # contribute with which weight
+            weights = map(c -> carry_weight(c, boundary), new_carry)
+            tensors[r] = sum(data .* weights, dims=1)
         else
             tensors[r] = data
         end
