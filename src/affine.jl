@@ -83,7 +83,7 @@ function affine_transform_tensors(
     # Then there is a multiplicative inverse such that inv_s * s ≡ 1 (mod 2^R)
     # This lets us rewrite: 1/s * (A*x + b) to inv_s*(A*x + b)
     base = 1 << R
-    inv_s = modular_inverse(s, base)
+    inv_s = invmod_pow2(s, base)
     A = inv_s * A
     b = inv_s * b
 
@@ -204,7 +204,7 @@ function affine_transform_matrix(
         throw(DomainError(s, "right now we only support odd s"))
 
     mask = ~(~0 << R)
-    inv_s = modular_inverse(s, R)
+    inv_s = invmod_pow2(s, R)
     y_index = Int[]
     x_index = Int[]
 
@@ -316,14 +316,17 @@ digits_to_number(v::AbstractVector{<:Integer}, bits::Integer) =
 end
 
 """
-    modular_inverse(b, m)
+    invmod_pow2(b, m)
 
 Compute the multiplicative inverse of an integer `b` modulo `2^m`, i.e., find
 and return an integer `x` such that:
 
     x * b ≡ 1  (mod 2^m)
+
+For Julia 1.11 and onwards, this is equivalent to, but should be faster than,
+`invmod(b, 1 << m)`.
 """
-function modular_inverse(b::Integer, m::Integer)
+function invmod_pow2(b::Integer, m::Integer)
     0 <= m <= 8 * sizeof(b) ||
         throw(DomainError(m, "invalid number of bits"))
     isodd(b) ||

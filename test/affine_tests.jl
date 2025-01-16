@@ -4,14 +4,14 @@
     using Quantics
     using LinearAlgebra
 
-    @testset "mod_inverse" begin
-        @test_throws DomainError Quantics.modular_inverse(423, -1)
-        @test_throws DomainError Quantics.modular_inverse(80, 10)
+    @testset "invmod_pow2" begin
+        @test_throws DomainError Quantics.invmod_pow2(423, -1)
+        @test_throws DomainError Quantics.invmod_pow2(80, 10)
 
-        @test Quantics.modular_inverse(1, 5) == 1
-        @test Quantics.modular_inverse(77, 8) isa Signed
-        @test (Quantics.modular_inverse(77, 8) * 77) & 0xFF == 1
-        @test (Quantics.modular_inverse(-49, 7) * -49) & 0x7F == 1
+        @test Quantics.invmod_pow2(1, 5) == 1
+        @test Quantics.invmod_pow2(77, 8) isa Signed
+        @test (Quantics.invmod_pow2(77, 8) * 77) & 0xFF == 1
+        @test (Quantics.invmod_pow2(-49, 7) * -49) & 0x7F == 1
     end
 
     vars = ("x", "y", "z")
