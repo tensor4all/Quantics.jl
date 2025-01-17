@@ -105,23 +105,8 @@ function affine_transform_tensors(
             R::Int, A::SMatrix{M, N, Int}, b::SVector{M, Int}, s::Int,
             boundary::AbstractBoundaryConditions) where {M, N}
     # Checks
-    0 <= R <= 8 * sizeof(Int) ||
+    0 <= R * max(M, N) <= 8 * sizeof(Int) ||
         throw(DomainError(R, "invalid value of the length R"))
-
-    # We are currently assuming periodic boundary conditions and s being odd.
-    # Then there is a multiplicative inverse such that inv_s * s ≡ 1 (mod 2^R)
-    # This lets us rewrite: 1/s * (A*x + b) to inv_s*(A*x + b)
-    if boundary isa PeriodicBoundaryConditions
-        isodd(s) ||
-            throw(DomainError(s, "must be odd for now"))
-        base = 1 << R
-        inv_s = invmod_pow2(s, base)
-        A = inv_s * A
-        b = inv_s * b
-    else
-        isone(s) ||
-            throw(DomainError(s, "must be one for now"))
-    end
 
     # The output tensors are a collection of matrices, but their first two
     # dimensions (links) vary
@@ -135,7 +120,10 @@ function affine_transform_tensors(
         bcurr = @. Bool(b & 1)
 
         # Get tensor.
-        new_carry, data = affine_transform_core(A, bcurr, carry)
+        new_carry, data = affine_transform_core(A, bcurr, s, carry)
+
+        # XXX do pruning: cut away carries that are dead ends in further
+        #     tensors
 
         if r == 1
             # For the first tensor, we examine the carry to see which elements
@@ -160,7 +148,7 @@ Construct core tensor `core` for an affine transform.  The core tensor for an
 affine transformation is given by:
 
     core[d, c, iy, ix] =
-        2 * out_carry[d] + s * y[iy] == A * x[ix] + b + in_carry[c]
+        2 * out_carry[d] == A * x[ix] + b - s * y[iy] + in_carry[c]
 
 where `A`, a matrix of integers, and `b`, a vector of bits, which define the
 affine transform. `c` and `d` are indices into a set of integer vectors
@@ -170,28 +158,64 @@ are the binary input and output vectors, respectively, of the affine transform.
 They are indexed in a "little-endian" fashion.
 """
 function affine_transform_core(
-            A::SMatrix{M, N, Int}, b::SVector{M, Bool},
+            A::SMatrix{M, N, Int}, b::SVector{M, Bool}, s::Int,
             carry::AbstractVector{SVector{M, Int}}
             ) where {M, N}
 
-    # The basic idea here is the following: we compute r = A*x + b + c
-    # for all "incoming" carrys d and all possible bit vectors, x ∈ {0,1}^N.
-    # Then we decompose r = 2*c + y, where y is again a bit vector, y ∈ {0,1}^M,
-    # and c is the "outgoing" carry, which may be negative.  We then store this
-    # as something like out[d][c, x, y] = true.
+    # The basic idea here is the following: we check
+    #
+    #           A*x + b - s*y + c == 2*d
+    #
+    # for all "incoming" carrys c and all possible bit vectors, x ∈ {0,1}^N.
+    # and y ∈ {0,1}^M for some outgoing carry d, which may be negative.
+    # We then store this as something like out[d, c, x, y].
     out = Dict{SVector{M, Int}, Array{Bool, 3}}()
     sizehint!(out, length(carry))
-    for (c_index, c) in enumerate(carry)
-        for (x_index, x) in enumerate(Iterators.product(ntuple(_ -> 0:1, N)...))
-            r = A * SVector{N, Bool}(x) + b + SVector{M, Int}(c)
-            y = @. Bool(r & 1)
-            d = r .>> 1
-            y_index = digits_to_number(y) + 1
 
-            d_mat = get!(out, d) do
-                return zeros(Bool, length(carry), 1 << M, 1 << N)
+    all_x = Iterators.product(ntuple(_ -> 0:1, N)...)
+    all_y = Iterators.product(ntuple(_ -> 0:1, M)...)
+    for (c_index, c) in enumerate(carry)
+        for (x_index, x) in enumerate(all_x)
+            z = A * SVector{N, Bool}(x) + b + SVector{M, Int}(c)
+
+            if isodd(s)
+                # if s is odd, then there is a unique y which solves satisfies
+                # above condition (simply the lowest bit)
+                y = @. Bool(z & 1)
+                y_index = digits_to_number(y) + 1
+
+                # Correct z and compute carry
+                z = @. z - s * y
+                d = z .>> 1
+
+                # Store this
+                d_mat = get!(out, d) do
+                    return zeros(Bool, length(carry), 1 << M, 1 << N)
+                end
+                @inbounds d_mat[c_index, y_index, x_index] = true
+            else
+                # if s instead even, then the conditions for x and y decouple.
+                # since y cannot touch the lowest bit, z must already be even.
+                all(iseven, z) ||
+                    continue
+
+                # y can take any value at this point. This may lead to
+                # bonds that do not contribute because they become dead ends
+                # in a subsequent tensor (no valid outgoing carries). We cannot
+                # decide this here, but must prune those "branches" from the
+                # right once in the driver routine (affine_transform_tensors).
+                for (y_index, y) in enumerate(all_y)
+                    # Correct z and compute carry
+                    z = @. z - s * y
+                    d = z .>> 1
+
+                    # Store this
+                    d_mat = get!(out, d) do
+                        return zeros(Bool, length(carry), 1 << M, 1 << N)
+                    end
+                    @inbounds d_mat[c_index, y_index, x_index] = true
+                end
             end
-            @inbounds d_mat[c_index, y_index, x_index] = true
         end
     end
 
