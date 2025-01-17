@@ -4,19 +4,10 @@
     using Quantics
     using LinearAlgebra
 
-    @testset "invmod_pow2" begin
-        @test_throws DomainError Quantics.invmod_pow2(423, -1)
-        @test_throws DomainError Quantics.invmod_pow2(80, 10)
-
-        @test Quantics.invmod_pow2(1, 5) == 1
-        @test Quantics.invmod_pow2(77, 8) isa Signed
-        @test (Quantics.invmod_pow2(77, 8) * 77) & 0xFF == 1
-        @test (Quantics.invmod_pow2(-49, 7) * -49) & 0x7F == 1
-    end
-
     vars = ("x", "y", "z")
     insite = [Index(2; tags="$v$l") for l in 1:10, v in vars]
     outsite = [Index(2; tags="$v$l")' for l in 1:10, v in vars]
+    boundaries = Quantics.OpenBoundaryConditions(), Quantics.PeriodicBoundaryConditions()
 
     @testset "full" begin
         A = [1 0; 1 1]
@@ -73,14 +64,17 @@
     @testset "compare_denom_odd" begin
         A = reshape([1//3], 1, 1)
         b = [0]
-        R = 6
 
-        T = Quantics.affine_transform_matrix(R, A, b)
-        mpo = Quantics.affine_transform_mpo(
-                    outsite[1:R, 1:1], insite[1:R, 1:1], A, b)
-        Trec = Quantics.affine_mpo_to_matrix(
-                    outsite[1:R, 1:1], insite[1:R, 1:1], mpo)
-        @test T == Trec
+        for R in [2, 3, 6]
+            for bc in boundaries
+                T = Quantics.affine_transform_matrix(R, A, b, bc)
+                mpo = Quantics.affine_transform_mpo(
+                            outsite[1:R, 1:1], insite[1:R, 1:1], A, b, bc)
+                Trec = Quantics.affine_mpo_to_matrix(
+                            outsite[1:R, 1:1], insite[1:R, 1:1], mpo)
+                @test T == Trec
+            end
+        end
     end
 
 end

@@ -8,22 +8,21 @@ abstract type AbstractBoundaryConditions end
 
 struct PeriodicBoundaryConditions <: AbstractBoundaryConditions end
 
-@inline function matching_y(v, s, R, ::PeriodicBoundaryConditions)
+@inline function equiv(x::SVector, y::SVector, R::Int, ::PeriodicBoundaryConditions)
     mask = ~(~0 << R)
-    inv_s = invmod_pow2(s, R)
-    return (v * inv_s) .& mask
+    return iszero((x - y) .& mask)
 end
 
-carry_weight(c, ::PeriodicBoundaryConditions) = true
+carry_weight(c::SVector, ::PeriodicBoundaryConditions) = true
 
 struct OpenBoundaryConditions <: AbstractBoundaryConditions end
 
-@inline function matching_y(v, s, R, ::OpenBoundaryConditions)
+@inline function equiv(x::SVector, y::SVector, R::Int, ::OpenBoundaryConditions)
     invmask = ~0 << R
-    return iszero(v .& invmask) && iszero(v .% s) ? v .÷ s : nothing
+    return iszero(x .& invmask) && x == y
 end
 
-carry_weight(c, ::OpenBoundaryConditions) = iszero(c)
+carry_weight(c::SVector, ::OpenBoundaryConditions) = iszero(c)
 
 """
     affine_transform_mpo(y, x, A, b, [boundary])
@@ -162,6 +161,10 @@ function affine_transform_core(
             carry::AbstractVector{SVector{M, Int}}
             ) where {M, N}
 
+    # Otherwise we have to reverse the indexing of x and y
+    M <= N ||
+        throw(ArgumentError("expect wide transformation matrix"))
+
     # The basic idea here is the following: we check
     #
     #           A*x + b - s*y + c == 2*d
@@ -259,27 +262,24 @@ function affine_transform_matrix(
             R::Int, A::SMatrix{M, N, Int}, b::SVector{M, Int},
             s::Int, boundary::AbstractBoundaryConditions) where {M, N}
     # Checks
-    0 <= R ||
+    0 <= R * max(M, N) <= 8 * sizeof(Int) ||
         throw(DomainError(R, "invalid value of the length R"))
-    isodd(s) ||
-        throw(DomainError(s, "right now we only support odd s"))
 
     mask = ~(~0 << R)
     y_index = Int[]
     x_index = Int[]
-    sizehint!(y_index, 1 << (R * N))
-    sizehint!(x_index, 1 << (R * N))
+    sizehint!(y_index, 1 << (R * max(M, N)))
+    sizehint!(x_index, 1 << (R * max(M, N)))
 
-    # XXX: we actually need to iterate whatever dimension is largest
-    for (ix, x) in enumerate(Iterators.product(ntuple(_ -> 0:mask, N)...))
+    all_x = Iterators.product(ntuple(_ -> 0:mask, N)...)
+    all_y = Iterators.product(ntuple(_ -> 0:mask, M)...)
+    for (ix, x) in enumerate(all_x)
         v = A * SVector{N, Int}(x) + b
-        y = matching_y(v, s, R, boundary)
-        if isnothing(y)
-            continue
-        else
-            iy = digits_to_number(y, R) + 1
-            push!(y_index, iy)
-            push!(x_index, ix)
+        for (iy, y) in enumerate(all_y)
+            if equiv(v, s * SVector{M, Int}(y), R, boundary)
+                push!(y_index, iy)
+                push!(x_index, ix)
+            end
         end
     end
     values = ones(Bool, size(x_index))
@@ -355,53 +355,12 @@ end
 
 """
     digits_to_number(v::AbstractVector{Bool})
-    digits_to_number(v::AbstractVector{<:Integer}, bits::Integer)
 
 Converts a vector of digits, starting with the least significant digit, to
-a number.  If the digits are boolean, then they are interpreted in base-2,
-otherwise, in base `2^bits`.
+a number.
 """
 digits_to_number(v::AbstractVector{Bool}) = _digits_to_number(Tuple(v))
-digits_to_number(v::AbstractVector{<:Integer}, bits::Integer) =
-    _digits_to_number(Int.(Tuple(v)), Int(bits))
 
 @inline _digits_to_number(v::Tuple{}) = 0
 @inline _digits_to_number(v::Tuple{Bool, Vararg{Bool}}) =
     _digits_to_number(v[2:end]) << 1 | v[1]
-@inline _digits_to_number(v::Tuple{}, bits::Int) = 0
-@inline function _digits_to_number(v::Tuple{Int, Vararg{Int}}, bits::Int)
-    mask = (~0) << bits
-    iszero(v[1] & mask) ||
-        throw(DomainError(v[1], "invalid digit in base $(1 << bits)"))
-    return _digits_to_number(v[2:end], bits) << bits | v[1]
-end
-
-"""
-    invmod_pow2(b, m)
-
-Compute the multiplicative inverse of an integer `b` modulo `2^m`, i.e., find
-and return an integer `x` such that:
-
-    x * b ≡ 1  (mod 2^m)
-
-For Julia 1.11 and onwards, this is equivalent to, but should be faster than,
-`invmod(b, 1 << m)`.
-"""
-function invmod_pow2(b::Integer, m::Integer)
-    0 <= m <= 8 * sizeof(b) ||
-        throw(DomainError(m, "invalid number of bits"))
-    isodd(b) ||
-        throw(DomainError(b, "only odd numbers have inverses mod power of 2"))
-
-    # Use Dusse and Kaliski's algorithm, as reproduced in
-    # Arazi and Qi, IEEE Trans. Comput. 57, 10 (2008), Algorithm 1
-    mask = one(b)
-    y = one(b)
-    for _ in 2:m
-        mask <<= 1
-        if (b * y) & mask != 0
-            y |= mask
-        end
-    end
-    return y
-end
