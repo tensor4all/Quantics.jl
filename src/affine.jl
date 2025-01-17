@@ -17,10 +17,7 @@ carry_weight(c::SVector, ::PeriodicBoundaryConditions) = true
 
 struct OpenBoundaryConditions <: AbstractBoundaryConditions end
 
-@inline function equiv(x::SVector, y::SVector, R::Int, ::OpenBoundaryConditions)
-    invmask = ~0 << R
-    return iszero(x .& invmask) && x == y
-end
+equiv(x::SVector, y::SVector, R::Int, ::OpenBoundaryConditions) = x == y
 
 carry_weight(c::SVector, ::OpenBoundaryConditions) = iszero(c)
 
@@ -277,6 +274,7 @@ function affine_transform_matrix(
         v = A * SVector{N, Int}(x) + b
         for (iy, y) in enumerate(all_y)
             if equiv(v, s * SVector{M, Int}(y), R, boundary)
+                #println("$y <- $x")
                 push!(y_index, iy)
                 push!(x_index, ix)
             end
@@ -345,7 +343,7 @@ function active_to_passive(
     m, n = size(A)
     T = [A b; zero(b)' 1]
 
-    # XXX: we do not support pseudo-inverses (LinearAlgebbra cannot do
+    # XXX: we do not support pseudo-inverses (LinearAlgebra cannot do
     #      this yet over the Rationals).
     Tinv = inv(T)
     Ainv = Tinv[1:m, 1:n]

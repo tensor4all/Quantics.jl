@@ -41,10 +41,11 @@
         R = 4
 
         T = Quantics.affine_transform_matrix(R, A, b)
+        M, N = size(A)
         mpo = Quantics.affine_transform_mpo(
-                    outsite[1:R, 1:3], insite[1:R, 1:3], A, b)
+                    outsite[1:R, 1:M], insite[1:R, 1:N], A, b)
         Trec = Quantics.affine_mpo_to_matrix(
-                    outsite[1:R, 1:3], insite[1:R, 1:3], mpo)
+                    outsite[1:R, 1:M], insite[1:R, 1:N], mpo)
         @test T == Trec
     end
 
@@ -54,10 +55,11 @@
         R = 4
 
         T = Quantics.affine_transform_matrix(R, A, b)
+        M, N = size(A)
         mpo = Quantics.affine_transform_mpo(
-                    outsite[1:R, 1:2], insite[1:R, 1:3], A, b)
+                    outsite[1:R, 1:M], insite[1:R, 1:N], A, b)
         Trec = Quantics.affine_mpo_to_matrix(
-                    outsite[1:R, 1:2], insite[1:R, 1:3], mpo)
+                    outsite[1:R, 1:M], insite[1:R, 1:N], mpo)
         @test T == Trec
     end
 
@@ -68,10 +70,28 @@
         for R in [2, 3, 6]
             for bc in boundaries
                 T = Quantics.affine_transform_matrix(R, A, b, bc)
+                M, N = size(A)
                 mpo = Quantics.affine_transform_mpo(
-                            outsite[1:R, 1:1], insite[1:R, 1:1], A, b, bc)
+                            outsite[1:R, 1:M], insite[1:R, 1:N], A, b, bc)
                 Trec = Quantics.affine_mpo_to_matrix(
-                            outsite[1:R, 1:1], insite[1:R, 1:1], mpo)
+                            outsite[1:R, 1:M], insite[1:R, 1:N], mpo)
+                @test T == Trec
+            end
+        end
+    end
+
+    @testset "compare_denom_even" begin
+        A = reshape([1//2], 1, 1)
+        b = [3]   # b = 5 would not work :(
+
+        for R in [3, 5]
+            for bc in boundaries
+                T = Quantics.affine_transform_matrix(R, A, b, bc)
+                M, N = size(A)
+                mpo = Quantics.affine_transform_mpo(
+                            outsite[1:R, 1:M], insite[1:R, 1:N], A, b, bc)
+                Trec = Quantics.affine_mpo_to_matrix(
+                            outsite[1:R, 1:M], insite[1:R, 1:N], mpo)
                 @test T == Trec
             end
         end

@@ -11,6 +11,7 @@
 *.jl.mem
 .DS_Store
 /Manifest.toml
+/notebook*/
 /docs/Manifest.toml
 /docs/build/
 docs/build
