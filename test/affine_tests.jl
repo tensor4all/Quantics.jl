@@ -67,7 +67,7 @@
         A = reshape([1//3], 1, 1)
         b = [0]
 
-        for R in [2, 3, 6]
+        for R in [1, 3, 6]
             for bc in boundaries
                 T = Quantics.affine_transform_matrix(R, A, b, bc)
                 M, N = size(A)

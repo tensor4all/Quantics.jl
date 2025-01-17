@@ -70,15 +70,20 @@ function affine_transform_mpo(
     # Fill the MPO, taking care to not include auxiliary links at the edges
     mpo = MPO(R)
     spin_dims = ntuple(_ -> 2, M + N)
-    mpo[1] = ITensor(reshape(tensors[1], size(tensors[1], 2), spin_dims...),
-                     (link[1], y[1,:]..., x[1,:]...))
-    for r in 2:R-1
-        newshape = size(tensors[r])[1:2]..., spin_dims...
-        mpo[r] = ITensor(reshape(tensors[r], newshape),
-                         (link[r-1], link[r], y[r,:]..., x[r,:]...))
+    if R == 1
+        mpo[1] = ITensor(reshape(tensors[1], spin_dims...),
+                                 (y[1,:]..., x[1,:]...))
+    elseif R > 1
+        mpo[1] = ITensor(reshape(tensors[1], size(tensors[1], 2), spin_dims...),
+                        (link[1], y[1,:]..., x[1,:]...))
+        for r in 2:R-1
+            newshape = size(tensors[r])[1:2]..., spin_dims...
+            mpo[r] = ITensor(reshape(tensors[r], newshape),
+                            (link[r-1], link[r], y[r,:]..., x[r,:]...))
+        end
+        mpo[R] = ITensor(reshape(tensors[R], size(tensors[R], 1), spin_dims...),
+                        (link[R-1], y[R,:]..., x[R,:]...))
     end
-    mpo[R] = ITensor(reshape(tensors[R], size(tensors[R], 1), spin_dims...),
-                     (link[R-1], y[R,:]..., x[R,:]...))
     return mpo
 end
 
