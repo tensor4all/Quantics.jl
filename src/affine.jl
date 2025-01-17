@@ -185,8 +185,7 @@ function affine_transform_core(
                 y_index = digits_to_number(y) + 1
 
                 # Correct z and compute carry
-                z = @. z - s * y
-                d = z .>> 1
+                d = @. (z - s * y) .>> 1
 
                 # Store this
                 d_mat = get!(out, d) do
@@ -206,8 +205,7 @@ function affine_transform_core(
                 # right once in the driver routine (affine_transform_tensors).
                 for (y_index, y) in enumerate(all_y)
                     # Correct z and compute carry
-                    z = @. z - s * y
-                    d = z .>> 1
+                    d = @. (z - s * y) >> 1
 
                     # Store this
                     d_mat = get!(out, d) do
