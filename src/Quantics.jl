@@ -8,8 +8,9 @@ using ITensorMPS: ITensorMPS, MPS, MPO, AbstractMPS
 using ITensorMPS: findsite, linkinds, linkind, findsites, truncate!
 
 import SparseIR: Fermionic, Bosonic, Statistics
-import LinearAlgebra: I
+import LinearAlgebra: I, inv
 using StaticArrays
+import SparseArrays: sparse
 
 import QuanticsTCI
 import TCIITensorConversion
@@ -28,5 +29,6 @@ include("mps.jl")
 include("fouriertransform.jl")
 include("imaginarytime.jl")
 include("transformer.jl")
+include("affine.jl")
 
 end
