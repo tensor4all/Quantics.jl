@@ -98,13 +98,22 @@ function affine_transform_tensors(
             R::Integer, A::AbstractMatrix{<:Union{Integer,Rational}},
             b::AbstractVector{<:Union{Integer,Rational}},
             boundary::AbstractBoundaryConditions=PeriodicBoundaryConditions())
-    return affine_transform_tensors(
-                Int(R), _affine_static_args(A, b)..., boundary)
+    tensors, carry = affine_transform_tensors(
+                Int(R), _affine_static_args(A, b)...)
+    
+    # Applly a cap tensor for outgoing carry from the left most tensor
+    cap_tensor = transpose([carry_weight(c, boundary) for c in carry])
+    tensors[1] = reshape(cap_tensor * reshape(tensors[1], length(carry), :), 1, size(tensors[1])[2:end]...)
+
+    #@show carry
+    #for r in 1:R
+        #@show r, size(tensors[r])
+    #end
+    return tensors
 end
 
 function affine_transform_tensors(
-            R::Int, A::SMatrix{M, N, Int}, b::SVector{M, Int}, s::Int,
-            boundary::AbstractBoundaryConditions) where {M, N}
+            R::Int, A::SMatrix{M, N, Int}, b::SVector{M, Int}, s::Int) where {M, N}
     # Checks
     0 <= R * max(M, N) <= 8 * sizeof(Int) ||
         throw(DomainError(R, "invalid value of the length R"))
@@ -126,20 +135,20 @@ function affine_transform_tensors(
         # XXX do pruning: cut away carries that are dead ends in further
         #     tensors
 
-        if r == 1
+        #if r == 1
             # For the first tensor, we examine the carry to see which elements
             # contribute with which weight
-            weights = map(c -> carry_weight(c, boundary), new_carry)
-            tensors[r] = sum(data .* weights, dims=1)
-        else
+            #weights = map(c -> carry_weight(c, boundary), new_carry)
+            #tensors[r] = sum(data .* weights, dims=1)
+        #else
             tensors[r] = data
-        end
+        #end
 
         # Set carry to the next value
         carry = new_carry
         b = @. b >> 1
     end
-    return tensors
+    return tensors, carry
 end
 
 """

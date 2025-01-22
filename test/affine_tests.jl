@@ -126,7 +126,8 @@
         b = [3]   # XXX b = 5 would not work :(
 
         for R in [3, 5]
-            for bc in boundaries
+            #for bc in boundaries
+            for bc in [Quantics.PeriodicBoundaryConditions()]
                 T = Quantics.affine_transform_matrix(R, A, b, bc)
                 M, N = size(A)
                 mpo = Quantics.affine_transform_mpo(
