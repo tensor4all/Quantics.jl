@@ -55,7 +55,9 @@
         @test T * T' == I
     end
 
-    @testset "full R=$R, boundary=$(boundary), M=$M, N=$N" for R in [1, 2], boundary in boundaries, M in [1, 2], N in [1, 2]
+    @testset "full R=$R, boundary=$(boundary), M=$M, N=$N" for R in [1, 2],
+        boundary in boundaries, M in [1, 2], N in [1, 2]
+
         for (A, b) in testtests[(M, N)]
             A_ = reshape(A, M, N)
             b_ = reshape(b, M)
@@ -123,18 +125,19 @@
 
     @testset "compare_denom_even" begin
         A = reshape([1 // 2], 1, 1)
-        b = [3]   # XXX b = 5 would not work :(
 
-        for R in [3, 5]
-            #for bc in boundaries
-            for bc in [Quantics.PeriodicBoundaryConditions()]
-                T = Quantics.affine_transform_matrix(R, A, b, bc)
-                M, N = size(A)
-                mpo = Quantics.affine_transform_mpo(
-                    outsite[1:R, 1:M], insite[1:R, 1:N], A, b, bc)
-                Trec = Quantics.affine_mpo_to_matrix(
-                    outsite[1:R, 1:M], insite[1:R, 1:N], mpo)
-                @test T == Trec
+        for b in [[3], [5], [-3], [-5]]
+            for R in [3, 5]
+                #for bc in boundaries
+                for bc in [Quantics.PeriodicBoundaryConditions()]
+                    T = Quantics.affine_transform_matrix(R, A, b, bc)
+                    M, N = size(A)
+                    mpo = Quantics.affine_transform_mpo(
+                        outsite[1:R, 1:M], insite[1:R, 1:N], A, b, bc)
+                    Trec = Quantics.affine_mpo_to_matrix(
+                        outsite[1:R, 1:M], insite[1:R, 1:N], mpo)
+                    @test T == Trec
+                end
             end
         end
     end

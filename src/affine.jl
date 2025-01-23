@@ -98,16 +98,6 @@ function affine_transform_tensors(
         boundary::AbstractBoundaryConditions=PeriodicBoundaryConditions())
     tensors, carry = affine_transform_tensors(
         Int(R), _affine_static_args(A, b)...; boundary)
-
-    # Applly a cap tensor for outgoing carry from the left most tensor
-    #cap_tensor = transpose([carry_weight(c, boundary) for c in carry])
-    #tensors[1] = reshape(
-    #cap_tensor * reshape(tensors[1], length(carry), :), 1, size(tensors[1])[2:end]...)
-
-    #@show carry
-    #for r in 1:R
-    #@show r, size(tensors[r])
-    #end
     return tensors
 end
 
@@ -126,16 +116,10 @@ function affine_transform_tensors(
     carry = [zero(SVector{M,Int})]
     for r in R:-1:1
         # Figure out the current bit to add from the shift term and shift
-        # it out from the array
-        #bcurr = @. (b & 1)
-        #@show bcurr
-        #bcurr = @. (b & 1)
         bcurr = SVector{M,Int}((copysign(b_, abs(b_)) & 1 for b_ in b))
-        #@show b, bcurr
 
         # Get tensor.
         new_carry, data = affine_transform_core(A, bcurr, s, carry)
-        @show new_carry
 
         # XXX do pruning: cut away carries that are dead ends in further
         #     tensors
