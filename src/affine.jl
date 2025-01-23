@@ -100,9 +100,9 @@ function affine_transform_tensors(
         Int(R), _affine_static_args(A, b)...; boundary)
 
     # Applly a cap tensor for outgoing carry from the left most tensor
-    cap_tensor = transpose([carry_weight(c, boundary) for c in carry])
-    tensors[1] = reshape(
-        cap_tensor * reshape(tensors[1], length(carry), :), 1, size(tensors[1])[2:end]...)
+    #cap_tensor = transpose([carry_weight(c, boundary) for c in carry])
+    #tensors[1] = reshape(
+    #cap_tensor * reshape(tensors[1], length(carry), :), 1, size(tensors[1])[2:end]...)
 
     #@show carry
     #for r in 1:R
@@ -111,9 +111,9 @@ function affine_transform_tensors(
     return tensors
 end
 
-
 function affine_transform_tensors(
-        R::Int, A::SMatrix{M,N,Int}, b::SVector{M,Int}, s::Int; boundary::AbstractBoundaryConditions=PeriodicBoundaryConditions()) where {M,N}
+        R::Int, A::SMatrix{M,N,Int}, b::SVector{M,Int}, s::Int;
+        boundary::AbstractBoundaryConditions=PeriodicBoundaryConditions()) where {M,N}
     # Checks
     0 <= R * max(M, N) <= 8 * sizeof(Int) ||
         throw(DomainError(R, "invalid value of the length R"))
@@ -154,9 +154,31 @@ function affine_transform_tensors(
         b = @. b >> 1
     end
 
-    # We need a special care for cases with large b
-    if boundary == OpenBoundaryConditions()
+    if boundary == OpenBoundaryConditions() && maximum(abs, b) > 0
+        # Extend the tensors to the left until we have no more nonzero bits in b
+        # This is equivalent to a larger domain.
+        tensors_ext = Array{Bool,4}[]
+        while maximum(abs, b) > 0
+            bcurr = SVector{M,Int}((copysign(b_, abs(b_)) & 1 for b_ in b))
+            new_carry, data = affine_transform_core(A, bcurr, s, carry; activebit=false)
+            pushfirst!(tensors_ext, data)
 
+            carry = new_carry
+            b = @. b >> 1
+        end
+
+        weights = map(c -> carry_weight(c, boundary), carry)
+        tensors_ext[1] = sum(tensors_ext[1] .* weights; dims=1)
+        _matrix(x) = reshape(x, size(x, 1), size(x, 2))
+        cap_matrix = reduce(*, _matrix.(tensors_ext))
+
+        tensors[1] = reshape(
+            cap_matrix * reshape(tensors[1], size(tensors[1], 1), :),
+            size(cap_matrix, 1), size(tensors[1])[2:end]...
+        )
+    else
+        weights = map(c -> carry_weight(c, boundary), carry)
+        tensors[1] = sum(tensors[1] .* weights; dims=1)
     end
 
     return tensors, carry
@@ -180,7 +202,7 @@ They are indexed in a "little-endian" fashion.
 """
 function affine_transform_core(
         A::SMatrix{M,N,Int}, b::SVector{M,Int}, s::Int,
-        carry::AbstractVector{SVector{M,Int}}
+        carry::AbstractVector{SVector{M,Int}}; activebit=true
 ) where {M,N}
 
     # Otherwise we have to reverse the indexing of x and y
@@ -197,8 +219,10 @@ function affine_transform_core(
     out = Dict{SVector{M,Int},Array{Bool,3}}()
     sizehint!(out, length(carry))
 
-    all_x = Iterators.product(ntuple(_ -> 0:1, N)...)
-    all_y = Iterators.product(ntuple(_ -> 0:1, M)...)
+    bitrange = activebit ? range(0, 1) : range(0, 0)
+    all_x = Iterators.product(ntuple(_ -> bitrange, N)...)
+    all_y = Iterators.product(ntuple(_ -> bitrange, M)...)
+
     for (c_index, c) in enumerate(carry)
         for (x_index, x) in enumerate(all_x)
             z = A * SVector{N,Bool}(x) + b + SVector{M,Int}(c)
@@ -214,7 +238,8 @@ function affine_transform_core(
 
                 # Store this
                 d_mat = get!(out, d) do
-                    return zeros(Bool, length(carry), 1 << M, 1 << N)
+                    return zeros(
+                        Bool, length(carry), length(bitrange)^M, length(bitrange)^N)
                 end
                 @inbounds d_mat[c_index, y_index, x_index] = true
             else
@@ -234,7 +259,8 @@ function affine_transform_core(
 
                     # Store this
                     d_mat = get!(out, d) do
-                        return zeros(Bool, length(carry), 1 << M, 1 << N)
+                        return zeros(
+                            Bool, length(carry), length(bitrange)^M, length(bitrange)^N)
                     end
                     @inbounds d_mat[c_index, y_index, x_index] = true
                 end
@@ -245,7 +271,9 @@ function affine_transform_core(
     # We translate the dictionary into a vector of carrys (which we can then
     # pass into the next iteration) and a 4-way tensor of output values.
     carry_out = Vector{SVector{M,Int}}(undef, length(out))
-    value_out = Array{Bool,4}(undef, length(out), length(carry), 1 << M, 1 << N)
+    #value_out = Array{Bool,4}(undef, length(out), length(carry), 1 << M, 1 << N)
+    value_out = Array{Bool,4}(
+        undef, length(out), length(carry), length(bitrange)^M, length(bitrange)^N)
     for (p_index, p) in enumerate(pairs(out))
         carry_out[p_index] = p.first
         value_out[p_index, :, :, :] .= p.second
