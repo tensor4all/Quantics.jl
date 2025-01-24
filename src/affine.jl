@@ -7,16 +7,22 @@ abstract type AbstractBoundaryConditions end
 
 struct PeriodicBoundaryConditions <: AbstractBoundaryConditions end
 
-@inline function equiv(x::SVector, y::SVector, R::Int, ::PeriodicBoundaryConditions)
-    mask = ~(~0 << R)
-    return iszero((x - y) .& mask)
+function equiv(x::SVector, y::SVector, R::Int, s::Int,
+        ::PeriodicBoundaryConditions, ::RoundingMode{RM}) where {RM}
+    _isequiv(mod.(x, s * (1 << R)), mod.(y, s * (1 << R)), s, RoundingMode{RM}())
 end
 
 carry_weight(c::SVector, ::PeriodicBoundaryConditions) = true
 
 struct OpenBoundaryConditions <: AbstractBoundaryConditions end
 
-equiv(x::SVector, y::SVector, R::Int, ::OpenBoundaryConditions) = x == y
+function equiv(x::SVector, y::SVector, R::Int, s::Int,
+        ::OpenBoundaryConditions, ::RoundingMode{RM}) where {RM}
+    _isequiv(x, y, s, RoundingMode{RM}())
+end
+
+_isequiv(x::SVector, y::SVector, s::Int, ::RoundingMode{:None}) = iszero(x - y)
+_isequiv(x::SVector, y::SVector, s::Int, ::RoundingMode{:Down}) = all(0 .<= y - x .< s)
 
 carry_weight(c::SVector, ::OpenBoundaryConditions) = iszero(c)
 
@@ -47,8 +53,9 @@ Construct and return ITensor matrix product state for the affine transformation
 function affine_transform_mpo(
         y::AbstractMatrix{<:Index}, x::AbstractMatrix{<:Index},
         A::AbstractMatrix{<:Union{Integer,Rational}},
-        b::AbstractVector{<:Union{Integer,Rational}},
-        boundary::AbstractBoundaryConditions=PeriodicBoundaryConditions()
+        b::AbstractVector{<:Union{Integer,Rational}};
+        boundary::AbstractBoundaryConditions=PeriodicBoundaryConditions(),
+        roundingmode=RoundingMode{:None}()
 )::MPO
     R = size(y, 1)
     M, N = size(A)
@@ -60,7 +67,7 @@ function affine_transform_mpo(
         throw(ArgumentError("vector is not correctly dimensioned"))
 
     # get the tensors so that we know how large the links must be
-    tensors = affine_transform_tensors(R, A, b, boundary)
+    tensors = affine_transform_tensors(R, A, b; boundary, roundingmode)
 
     # Create the links
     link = [Index(size(tensors[r], 2); tags="link $r") for r in 1:(R - 1)]
@@ -90,20 +97,26 @@ end
 
 Compute vector of core tensors (constituent 4-way tensors) for a matrix product
 operator corresponding to one of affine transformation `y = A*x + b` with
-rational `A` and `b`
+rational `A` and `b`.
+The values of `A*x + b` are truncated to integers using `roundingmode` when the equality is checked.
 """
 function affine_transform_tensors(
         R::Integer, A::AbstractMatrix{<:Union{Integer,Rational}},
-        b::AbstractVector{<:Union{Integer,Rational}},
-        boundary::AbstractBoundaryConditions=PeriodicBoundaryConditions())
-    tensors, carry = affine_transform_tensors(
-        Int(R), _affine_static_args(A, b)...; boundary)
+        b::AbstractVector{<:Union{Integer,Rational}};
+        boundary::AbstractBoundaryConditions=PeriodicBoundaryConditions(),
+        roundingmode=RoundingMode{:None}()
+) 
+    M = size(A, 1)
+    initial_carry::Vector{SVector{M,Int}} = _initial_carry(R, Val(M), roundingmode)
+    tensors, lastcarry = affine_transform_tensors(
+        Int(R), _affine_static_args(A, b)..., initial_carry, boundary)
     return tensors
 end
 
 function affine_transform_tensors(
-        R::Int, A::SMatrix{M,N,Int}, b::SVector{M,Int}, s::Int;
-        boundary::AbstractBoundaryConditions=PeriodicBoundaryConditions()) where {M,N}
+        R::Int, A::SMatrix{M,N,Int}, b::SVector{M,Int}, s::Int, initial_carry,
+        boundary::AbstractBoundaryConditions=PeriodicBoundaryConditions()
+) where {M,N}
     # Checks
     0 <= R * max(M, N) <= 8 * sizeof(Int) ||
         throw(DomainError(R, "invalid value of the length R"))
@@ -112,8 +125,7 @@ function affine_transform_tensors(
     # dimensions (links) vary
     tensors = Vector{Array{Bool,4}}(undef, R)
 
-    # The initial carry is zero
-    carry = [zero(SVector{M,Int})]
+    carry = initial_carry
     for r in R:-1:1
         # Figure out the current bit to add from the shift term and shift
         bcurr = SVector{M,Int}((copysign(b_, abs(b_)) & 1 for b_ in b))
@@ -137,33 +149,49 @@ function affine_transform_tensors(
         carry = new_carry
         b = @. b >> 1
     end
+        @show carry
 
-    if boundary == OpenBoundaryConditions() && maximum(abs, b) > 0
+    #if boundary == OpenBoundaryConditions() && maximum(abs, b) > 0
+
         # Extend the tensors to the left until we have no more nonzero bits in b
         # This is equivalent to a larger domain.
         tensors_ext = Array{Bool,4}[]
+        activebit = boundary != OpenBoundaryConditions()
+        @show activebit
         while maximum(abs, b) > 0
             bcurr = SVector{M,Int}((copysign(b_, abs(b_)) & 1 for b_ in b))
-            new_carry, data = affine_transform_core(A, bcurr, s, carry; activebit=false)
+            new_carry, data = affine_transform_core(A, bcurr, s, carry; activebit=activebit)
             pushfirst!(tensors_ext, data)
 
             carry = new_carry
             b = @. b >> 1
         end
+        @show carry
 
-        weights = map(c -> carry_weight(c, boundary), carry)
-        tensors_ext[1] = sum(tensors_ext[1] .* weights; dims=1)
-        _matrix(x) = reshape(x, size(x, 1), size(x, 2))
-        cap_matrix = reduce(*, _matrix.(tensors_ext))
+        weights =
+        if boundary == OpenBoundaryConditions()
+            map(c -> carry_weight(c, boundary), carry)
+        else
+            map(c -> all(c * 2^length(tensors_ext) .% s .== 0), carry)
+        end
+        @show length(tensors_ext)
+        @show weights
 
-        tensors[1] = reshape(
-            cap_matrix * reshape(tensors[1], size(tensors[1], 1), :),
-            size(cap_matrix, 1), size(tensors[1])[2:end]...
-        )
-    else
-        weights = map(c -> carry_weight(c, boundary), carry)
-        tensors[1] = sum(tensors[1] .* weights; dims=1)
-    end
+        if length(tensors_ext) > 0
+            tensors_ext[1] = sum(tensors_ext[1] .* weights; dims=1)
+            _matrix(x) = reshape(x, size(x, 1), size(x, 2))
+            for t in tensors_ext
+                @show size(t)
+            end
+            cap_matrix = reduce(*, _matrix.(tensors_ext))
+    
+            tensors[1] = reshape(
+                cap_matrix * reshape(tensors[1], size(tensors[1], 1), :),
+                size(cap_matrix, 1), size(tensors[1])[2:end]...
+            )
+        else
+            tensors[1] = sum(tensors[1] .* weights; dims=1)
+        end
 
     return tensors, carry
 end
@@ -211,6 +239,11 @@ function affine_transform_core(
         for (x_index, x) in enumerate(all_x)
             z = A * SVector{N,Bool}(x) + b + SVector{M,Int}(c)
 
+            #@show c
+            #@show x
+            #@show z
+
+
             if isodd(s)
                 # if s is odd, then there is a unique y which solves satisfies
                 # above condition (simply the lowest bit)
@@ -219,13 +252,17 @@ function affine_transform_core(
 
                 # Correct z and compute carry
                 d = @. (z - s * y) .>> 1
+                ##@show d
 
                 # Store this
-                d_mat = get!(out, d) do
-                    return zeros(
-                        Bool, length(carry), length(bitrange)^M, length(bitrange)^N)
+                if y_index <= length(bitrange)^M
+                    d_mat = get!(out, d) do
+                        return zeros(
+                            Bool, length(carry), length(bitrange)^M, length(bitrange)^N)
+                    end
+                    #@inbounds d_mat[c_index, y_index, x_index] = true
+                    d_mat[c_index, y_index, x_index] = true
                 end
-                @inbounds d_mat[c_index, y_index, x_index] = true
             else
                 # if s instead even, then the conditions for x and y decouple.
                 # since y cannot touch the lowest bit, z must already be even.
@@ -242,11 +279,14 @@ function affine_transform_core(
                     d = @. (z - s * y) >> 1
 
                     # Store this
-                    d_mat = get!(out, d) do
-                        return zeros(
-                            Bool, length(carry), length(bitrange)^M, length(bitrange)^N)
+                    if y_index <= length(bitrange)^M
+                        d_mat = get!(out, d) do
+                            return zeros(
+                                Bool, length(carry), length(bitrange)^M, length(bitrange)^N)
+                        end
+                        #@inbounds d_mat[c_index, y_index, x_index] = true
+                        d_mat[c_index, y_index, x_index] = true
                     end
-                    @inbounds d_mat[c_index, y_index, x_index] = true
                 end
             end
         end
@@ -281,22 +321,30 @@ mapped to `x` and `y` as follows:
     ix = 1 + x[1] + x[2] * 2^R + x[3] * 2^(2R) + ... + x[N] * 2^((N-1)*R)
 
 `boundary` specifies the type of boundary conditions.
+
+The values of `A*x + b` are truncated to integers using `roundingmode` when the equality is checked.
 """
 function affine_transform_matrix(
         R::Integer, A::AbstractMatrix{<:Union{Integer,Rational}},
-        b::AbstractVector{<:Union{Integer,Rational}},
-        boundary::AbstractBoundaryConditions=PeriodicBoundaryConditions()
+        b::AbstractVector{<:Union{Integer,Rational}};
+        boundary::AbstractBoundaryConditions=PeriodicBoundaryConditions(),
+        roundingmode=RoundingMode{:None}()
 )
-    return affine_transform_matrix(Int(R), _affine_static_args(A, b)..., boundary)
+    return affine_transform_matrix(
+        Int(R), _affine_static_args(A, b)...; boundary, roundingmode)
 end
 
 function affine_transform_matrix(
         R::Int, A::SMatrix{M,N,Int}, b::SVector{M,Int},
-        s::Int, boundary::AbstractBoundaryConditions) where {M,N}
+        s::Int;
+        boundary::AbstractBoundaryConditions,
+        roundingmode::RoundingMode{RM}
+) where {M,N,RM}
     # Checks
     0 <= R * max(M, N) <= 8 * sizeof(Int) ||
         throw(DomainError(R, "invalid value of the length R"))
-
+    
+    
     mask = ~(~0 << R)
     y_index = Int[]
     x_index = Int[]
@@ -308,7 +356,7 @@ function affine_transform_matrix(
     for (ix, x) in enumerate(all_x)
         v = A * SVector{N,Int}(x) + b
         for (iy, y) in enumerate(all_y)
-            if equiv(v, s * SVector{M,Int}(y), R, boundary)
+            if equiv(v, s * SVector{M,Int}(y), R, s, boundary, roundingmode)
                 #println("$y <- $x")
                 push!(y_index, iy)
                 push!(x_index, ix)
@@ -355,6 +403,15 @@ function _affine_static_args(A::AbstractMatrix{<:Union{Integer,Rational}},
 
     # Construct static matrix
     return SMatrix{M,N,Int}(Ai), SVector{M,Int}(bi), denom
+end
+
+function _initial_carry(R::Int, ::Val{M}, ::RoundingMode{:None}) where {M}
+    [SVector{M,Int}(zeros(Int, M))]
+end
+
+function _initial_carry(R::Int, ::Val{M}, ::RoundingMode{:Down}) where {M}
+    [SVector{M,Int}(carry)
+     for carry in enumerate(Iterators.product(ntuple(x -> 1:(2^R - 1), M)...))]
 end
 
 """

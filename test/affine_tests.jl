@@ -4,23 +4,34 @@
     using Quantics
     using LinearAlgebra
 
+
     # Test results of affine_transform_matrix()
-    function test_affine_transform_matrix_multi_variables(R, A, b, T, boundary)
+    function test_affine_transform_matrix_multi_variables(R, A, b, s, T; boundary, roundingmode)
         M, N = size(A)
 
         yranges = [0:(2^R - 1) for _ in 1:M]
         xranges = [0:(2^R - 1) for _ in 1:N]
 
+        _round = if roundingmode == RoundingMode{:None}()
+            x -> x
+        else
+            x -> round(x, RoundDown)
+        end
+
         # Iterate over all combinations of input and output variables
         for x_vals in Iterators.product(xranges...), y_vals in Iterators.product(yranges...)
             x = collect(x_vals)  # Convert input tuple to a vector
-            Axb = A * x .+ b  # Apply the affine transformation
+
+            Axb = _round.((A * x .+ b) ./ s)  # Apply the affine transformation
+
             if boundary == Quantics.PeriodicBoundaryConditions()
                 Axb = mod.(Axb, 2^R)
             elseif boundary == Quantics.OpenBoundaryConditions()
-                Axb = map(x -> 0 <= x <= 2^R - 1 ? x : nothing, Axb)
+                Axb = map(x -> 0 <= x < 2^R ? x : typemin(Int), Axb)
             end
-            ref = Axb == collect(y_vals)  # Compare to the reference output
+
+            # Compare to the reference output
+            ref = all(Axb .== collect(y_vals))
 
             # Calculate indices for input and output
             iy = 1 + sum(y_vals[i] * (2^R)^(i - 1) for i in 1:M)
@@ -55,16 +66,20 @@
         @test T * T' == I
     end
 
-    @testset "full R=$R, boundary=$(boundary), M=$M, N=$N" for R in [1, 2],
-        boundary in boundaries, M in [1, 2], N in [1, 2]
-
+    @testset "full R=$R, boundary=$(boundary), M=$M, N=$N" for R in [1, 2, 3],
+        roundingmode in [RoundingMode{:None}()],
+        boundary in boundaries,
+        M in [1, 2], N in [1, 2],
+        s in [1, 2]
+    
         for (A, b) in testtests[(M, N)]
             A_ = reshape(A, M, N)
             b_ = reshape(b, M)
-            T = Quantics.affine_transform_matrix(R, A_, b_, boundary)
-            test_affine_transform_matrix_multi_variables(R, A_, b_, T, boundary)
+            T = Quantics.affine_transform_matrix(R, A_ // s, b_ // s; boundary, roundingmode)
+            test_affine_transform_matrix_multi_variables(R, A_, b_, s, T; boundary, roundingmode)
         end
     end
+
     @testset "compare_simple" begin
         A = [1 0; 1 1]
         b = [0; 0]
@@ -112,10 +127,10 @@
 
         for R in [1, 3, 6]
             for bc in boundaries
-                T = Quantics.affine_transform_matrix(R, A, b, bc)
+                T = Quantics.affine_transform_matrix(R, A, b; boundary = bc)
                 M, N = size(A)
                 mpo = Quantics.affine_transform_mpo(
-                    outsite[1:R, 1:M], insite[1:R, 1:N], A, b, bc)
+                    outsite[1:R, 1:M], insite[1:R, 1:N], A, b; boundary = bc)
                 Trec = Quantics.affine_mpo_to_matrix(
                     outsite[1:R, 1:M], insite[1:R, 1:N], mpo)
                 @test T == Trec
@@ -130,10 +145,10 @@
             for R in [3, 5]
                 #for bc in boundaries
                 for bc in [Quantics.PeriodicBoundaryConditions()]
-                    T = Quantics.affine_transform_matrix(R, A, b, bc)
+                    T = Quantics.affine_transform_matrix(R, A, b; boundary = bc)
                     M, N = size(A)
                     mpo = Quantics.affine_transform_mpo(
-                        outsite[1:R, 1:M], insite[1:R, 1:N], A, b, bc)
+                        outsite[1:R, 1:M], insite[1:R, 1:N], A, b; boundary = bc)
                     Trec = Quantics.affine_mpo_to_matrix(
                         outsite[1:R, 1:M], insite[1:R, 1:N], mpo)
                     @test T == Trec
@@ -148,10 +163,10 @@
 
         for R in [3, 4]
             for bc in boundaries
-                T = Quantics.affine_transform_matrix(R, A, b, bc)
+                T = Quantics.affine_transform_matrix(R, A, b; boundary = bc)
                 M, N = size(A)
                 mpo = Quantics.affine_transform_mpo(
-                    outsite[1:R, 1:M], insite[1:R, 1:N], A, b, bc)
+                    outsite[1:R, 1:M], insite[1:R, 1:N], A, b; boundary = bc)
                 Trec = Quantics.affine_mpo_to_matrix(
                     outsite[1:R, 1:M], insite[1:R, 1:N], mpo)
                 @test T == Trec
