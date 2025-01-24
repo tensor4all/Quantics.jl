@@ -1,8 +1,7 @@
 """
     AbstractBoundaryConditions
 
-Boundary conditions for the QTT to use. Use `OpenBoundaryCondtions`` for open
-boundaries and `PeriodicBoundaryConditions` for periodic ones.
+Boundary conditions for the QTT to use. Use `OpenBoundaryCondtions`` for open boundaries and `PeriodicBoundaryConditions` for periodic ones.
 """
 abstract type AbstractBoundaryConditions end
 
@@ -35,23 +34,22 @@ Construct and return ITensor matrix product state for the affine transformation
        |          |         |          |                 |          |
     x[1,1] ... x[1,N]    x[2,1] ... x[2,N]            x[R,1] ... x[R,N]
 
+## Arguments
 
-Arguments
----------
-- `y`: An `R × M` matrix of ITensor indices, where `y[r,m]` corresponds to
-  the `r`-th length scale of the `m`-th output variable.
-- `x`: An `R × N` matrix of ITensor indices, where `x[r,n]` corresponds to
-  the `r`-th length scale of the `n`-th input variable.
-- `A`: An `M × N` rational matrix representing the linear transformation.
-- `b`: An `M` reational vector representing the translation.
-- `boundary`: boundary conditions (defaults to `PeriodicBoundaryConditions()`)
+  - `y`: An `R × M` matrix of ITensor indices, where `y[r,m]` corresponds to
+    the `r`-th length scale of the `m`-th output variable.
+  - `x`: An `R × N` matrix of ITensor indices, where `x[r,n]` corresponds to
+    the `r`-th length scale of the `n`-th input variable.
+  - `A`: An `M × N` rational matrix representing the linear transformation.
+  - `b`: An `M` reational vector representing the translation.
+  - `boundary`: boundary conditions (defaults to `PeriodicBoundaryConditions()`)
 """
 function affine_transform_mpo(
-            y::AbstractMatrix{<:Index}, x::AbstractMatrix{<:Index},
-            A::AbstractMatrix{<:Union{Integer,Rational}},
-            b::AbstractVector{<:Union{Integer,Rational}},
-            boundary::AbstractBoundaryConditions=PeriodicBoundaryConditions()
-            )::MPO
+        y::AbstractMatrix{<:Index}, x::AbstractMatrix{<:Index},
+        A::AbstractMatrix{<:Union{Integer,Rational}},
+        b::AbstractVector{<:Union{Integer,Rational}},
+        boundary::AbstractBoundaryConditions=PeriodicBoundaryConditions()
+)::MPO
     R = size(y, 1)
     M, N = size(A)
     size(x) == (R, N) ||
@@ -65,24 +63,24 @@ function affine_transform_mpo(
     tensors = affine_transform_tensors(R, A, b, boundary)
 
     # Create the links
-    link = [Index(size(tensors[r], 2), tags="link $r") for r in 1:R-1]
+    link = [Index(size(tensors[r], 2); tags="link $r") for r in 1:(R - 1)]
 
     # Fill the MPO, taking care to not include auxiliary links at the edges
     mpo = MPO(R)
     spin_dims = ntuple(_ -> 2, M + N)
     if R == 1
         mpo[1] = ITensor(reshape(tensors[1], spin_dims...),
-                                 (y[1,:]..., x[1,:]...))
+            (y[1, :]..., x[1, :]...))
     elseif R > 1
         mpo[1] = ITensor(reshape(tensors[1], size(tensors[1], 2), spin_dims...),
-                        (link[1], y[1,:]..., x[1,:]...))
-        for r in 2:R-1
+            (link[1], y[1, :]..., x[1, :]...))
+        for r in 2:(R - 1)
             newshape = size(tensors[r])[1:2]..., spin_dims...
             mpo[r] = ITensor(reshape(tensors[r], newshape),
-                            (link[r-1], link[r], y[r,:]..., x[r,:]...))
+                (link[r - 1], link[r], y[r, :]..., x[r, :]...))
         end
         mpo[R] = ITensor(reshape(tensors[R], size(tensors[R], 1), spin_dims...),
-                        (link[R-1], y[R,:]..., x[R,:]...))
+            (link[R - 1], y[R, :]..., x[R, :]...))
     end
     return mpo
 end
@@ -95,30 +93,30 @@ operator corresponding to one of affine transformation `y = A*x + b` with
 rational `A` and `b`
 """
 function affine_transform_tensors(
-            R::Integer, A::AbstractMatrix{<:Union{Integer,Rational}},
-            b::AbstractVector{<:Union{Integer,Rational}},
-            boundary::AbstractBoundaryConditions=PeriodicBoundaryConditions())
-    return affine_transform_tensors(
-                Int(R), _affine_static_args(A, b)..., boundary)
+        R::Integer, A::AbstractMatrix{<:Union{Integer,Rational}},
+        b::AbstractVector{<:Union{Integer,Rational}},
+        boundary::AbstractBoundaryConditions=PeriodicBoundaryConditions())
+    tensors, carry = affine_transform_tensors(
+        Int(R), _affine_static_args(A, b)...; boundary)
+    return tensors
 end
 
 function affine_transform_tensors(
-            R::Int, A::SMatrix{M, N, Int}, b::SVector{M, Int}, s::Int,
-            boundary::AbstractBoundaryConditions) where {M, N}
+        R::Int, A::SMatrix{M,N,Int}, b::SVector{M,Int}, s::Int;
+        boundary::AbstractBoundaryConditions=PeriodicBoundaryConditions()) where {M,N}
     # Checks
     0 <= R * max(M, N) <= 8 * sizeof(Int) ||
         throw(DomainError(R, "invalid value of the length R"))
 
     # The output tensors are a collection of matrices, but their first two
     # dimensions (links) vary
-    tensors = Vector{Array{Bool, 4}}(undef, R)
+    tensors = Vector{Array{Bool,4}}(undef, R)
 
     # The initial carry is zero
-    carry = [zero(SVector{M, Int})]
+    carry = [zero(SVector{M,Int})]
     for r in R:-1:1
         # Figure out the current bit to add from the shift term and shift
-        # it out from the array
-        bcurr = @. Bool(b & 1)
+        bcurr = SVector{M,Int}((copysign(b_, abs(b_)) & 1 for b_ in b))
 
         # Get tensor.
         new_carry, data = affine_transform_core(A, bcurr, s, carry)
@@ -126,20 +124,48 @@ function affine_transform_tensors(
         # XXX do pruning: cut away carries that are dead ends in further
         #     tensors
 
-        if r == 1
-            # For the first tensor, we examine the carry to see which elements
-            # contribute with which weight
-            weights = map(c -> carry_weight(c, boundary), new_carry)
-            tensors[r] = sum(data .* weights, dims=1)
-        else
-            tensors[r] = data
-        end
+        #if r == 1
+        # For the first tensor, we examine the carry to see which elements
+        # contribute with which weight
+        #weights = map(c -> carry_weight(c, boundary), new_carry)
+        #tensors[r] = sum(data .* weights, dims=1)
+        #else
+        tensors[r] = data
+        #end
 
         # Set carry to the next value
         carry = new_carry
         b = @. b >> 1
     end
-    return tensors
+
+    if boundary == OpenBoundaryConditions() && maximum(abs, b) > 0
+        # Extend the tensors to the left until we have no more nonzero bits in b
+        # This is equivalent to a larger domain.
+        tensors_ext = Array{Bool,4}[]
+        while maximum(abs, b) > 0
+            bcurr = SVector{M,Int}((copysign(b_, abs(b_)) & 1 for b_ in b))
+            new_carry, data = affine_transform_core(A, bcurr, s, carry; activebit=false)
+            pushfirst!(tensors_ext, data)
+
+            carry = new_carry
+            b = @. b >> 1
+        end
+
+        weights = map(c -> carry_weight(c, boundary), carry)
+        tensors_ext[1] = sum(tensors_ext[1] .* weights; dims=1)
+        _matrix(x) = reshape(x, size(x, 1), size(x, 2))
+        cap_matrix = reduce(*, _matrix.(tensors_ext))
+
+        tensors[1] = reshape(
+            cap_matrix * reshape(tensors[1], size(tensors[1], 1), :),
+            size(cap_matrix, 1), size(tensors[1])[2:end]...
+        )
+    else
+        weights = map(c -> carry_weight(c, boundary), carry)
+        tensors[1] = sum(tensors[1] .* weights; dims=1)
+    end
+
+    return tensors, carry
 end
 
 """
@@ -159,9 +185,9 @@ are the binary input and output vectors, respectively, of the affine transform.
 They are indexed in a "little-endian" fashion.
 """
 function affine_transform_core(
-            A::SMatrix{M, N, Int}, b::SVector{M, Bool}, s::Int,
-            carry::AbstractVector{SVector{M, Int}}
-            ) where {M, N}
+        A::SMatrix{M,N,Int}, b::SVector{M,Int}, s::Int,
+        carry::AbstractVector{SVector{M,Int}}; activebit=true
+) where {M,N}
 
     # Otherwise we have to reverse the indexing of x and y
     M <= N ||
@@ -174,14 +200,16 @@ function affine_transform_core(
     # for all "incoming" carrys c and all possible bit vectors, x ∈ {0,1}^N.
     # and y ∈ {0,1}^M for some outgoing carry d, which may be negative.
     # We then store this as something like out[d, c, x, y].
-    out = Dict{SVector{M, Int}, Array{Bool, 3}}()
+    out = Dict{SVector{M,Int},Array{Bool,3}}()
     sizehint!(out, length(carry))
 
-    all_x = Iterators.product(ntuple(_ -> 0:1, N)...)
-    all_y = Iterators.product(ntuple(_ -> 0:1, M)...)
+    bitrange = activebit ? range(0, 1) : range(0, 0)
+    all_x = Iterators.product(ntuple(_ -> bitrange, N)...)
+    all_y = Iterators.product(ntuple(_ -> bitrange, M)...)
+
     for (c_index, c) in enumerate(carry)
         for (x_index, x) in enumerate(all_x)
-            z = A * SVector{N, Bool}(x) + b + SVector{M, Int}(c)
+            z = A * SVector{N,Bool}(x) + b + SVector{M,Int}(c)
 
             if isodd(s)
                 # if s is odd, then there is a unique y which solves satisfies
@@ -194,7 +222,8 @@ function affine_transform_core(
 
                 # Store this
                 d_mat = get!(out, d) do
-                    return zeros(Bool, length(carry), 1 << M, 1 << N)
+                    return zeros(
+                        Bool, length(carry), length(bitrange)^M, length(bitrange)^N)
                 end
                 @inbounds d_mat[c_index, y_index, x_index] = true
             else
@@ -214,7 +243,8 @@ function affine_transform_core(
 
                     # Store this
                     d_mat = get!(out, d) do
-                        return zeros(Bool, length(carry), 1 << M, 1 << N)
+                        return zeros(
+                            Bool, length(carry), length(bitrange)^M, length(bitrange)^N)
                     end
                     @inbounds d_mat[c_index, y_index, x_index] = true
                 end
@@ -224,8 +254,10 @@ function affine_transform_core(
 
     # We translate the dictionary into a vector of carrys (which we can then
     # pass into the next iteration) and a 4-way tensor of output values.
-    carry_out = Vector{SVector{M, Int}}(undef, length(out))
-    value_out = Array{Bool, 4}(undef, length(out), length(carry), 1<<M, 1<<N)
+    carry_out = Vector{SVector{M,Int}}(undef, length(out))
+    #value_out = Array{Bool,4}(undef, length(out), length(carry), 1 << M, 1 << N)
+    value_out = Array{Bool,4}(
+        undef, length(out), length(carry), length(bitrange)^M, length(bitrange)^N)
     for (p_index, p) in enumerate(pairs(out))
         carry_out[p_index] = p.first
         value_out[p_index, :, :, :] .= p.second
@@ -251,16 +283,16 @@ mapped to `x` and `y` as follows:
 `boundary` specifies the type of boundary conditions.
 """
 function affine_transform_matrix(
-            R::Integer, A::AbstractMatrix{<:Union{Integer,Rational}},
-            b::AbstractVector{<:Union{Integer,Rational}},
-            boundary::AbstractBoundaryConditions=PeriodicBoundaryConditions()
-            )
+        R::Integer, A::AbstractMatrix{<:Union{Integer,Rational}},
+        b::AbstractVector{<:Union{Integer,Rational}},
+        boundary::AbstractBoundaryConditions=PeriodicBoundaryConditions()
+)
     return affine_transform_matrix(Int(R), _affine_static_args(A, b)..., boundary)
 end
 
 function affine_transform_matrix(
-            R::Int, A::SMatrix{M, N, Int}, b::SVector{M, Int},
-            s::Int, boundary::AbstractBoundaryConditions) where {M, N}
+        R::Int, A::SMatrix{M,N,Int}, b::SVector{M,Int},
+        s::Int, boundary::AbstractBoundaryConditions) where {M,N}
     # Checks
     0 <= R * max(M, N) <= 8 * sizeof(Int) ||
         throw(DomainError(R, "invalid value of the length R"))
@@ -274,9 +306,9 @@ function affine_transform_matrix(
     all_x = Iterators.product(ntuple(_ -> 0:mask, N)...)
     all_y = Iterators.product(ntuple(_ -> 0:mask, M)...)
     for (ix, x) in enumerate(all_x)
-        v = A * SVector{N, Int}(x) + b
+        v = A * SVector{N,Int}(x) + b
         for (iy, y) in enumerate(all_y)
-            if equiv(v, s * SVector{M, Int}(y), R, boundary)
+            if equiv(v, s * SVector{M,Int}(y), R, boundary)
                 #println("$y <- $x")
                 push!(y_index, iy)
                 push!(x_index, ix)
@@ -284,12 +316,12 @@ function affine_transform_matrix(
         end
     end
     values = ones(Bool, size(x_index))
-    return sparse(y_index, x_index, values, 1 << (R*M), 1 << (R*N))
+    return sparse(y_index, x_index, values, 1 << (R * M), 1 << (R * N))
 end
 
 function affine_mpo_to_matrix(
-            outsite::AbstractMatrix{<:Index}, insite::AbstractMatrix{<:Index},
-            mpo::MPO)
+        outsite::AbstractMatrix{<:Index}, insite::AbstractMatrix{<:Index},
+        mpo::MPO)
     prev_warn_order = ITensors.disable_warn_order()
     try
         mpo_contr = reduce(*, mpo)
@@ -298,11 +330,11 @@ function affine_mpo_to_matrix(
         # order (xR, ..., x1, yR, ..., y1) in order to have y = (y1 ... yR)_2
         # once we reshape a column-major array and match the order of the
         # variables in the full matrix.
-        out_indices = vec(reverse(outsite, dims=1))
-        in_indices = vec(reverse(insite, dims=1))
+        out_indices = vec(reverse(outsite; dims=1))
+        in_indices = vec(reverse(insite; dims=1))
         tensor = Array(mpo_contr, out_indices..., in_indices...)
         matrix = reshape(tensor,
-                         1 << length(out_indices), 1 << length(in_indices))
+            1 << length(out_indices), 1 << length(in_indices))
         return matrix
     finally
         ITensors.set_warn_order(prev_warn_order)
@@ -310,19 +342,19 @@ function affine_mpo_to_matrix(
 end
 
 function _affine_static_args(A::AbstractMatrix{<:Union{Integer,Rational}},
-                             b::AbstractVector{<:Union{Integer,Rational}})
+        b::AbstractVector{<:Union{Integer,Rational}})
     M, N = size(A)
     size(b, 1) == M ||
         throw(ArgumentError("A and b have incompatible size"))
 
     # Factor out common denominator and pass
-    denom = lcm(mapreduce(denominator, lcm, A, init=1),
-                mapreduce(denominator, lcm, b, init=1))
+    denom = lcm(mapreduce(denominator, lcm, A; init=1),
+        mapreduce(denominator, lcm, b; init=1))
     Ai = @. Int(denom * A)
     bi = @. Int(denom * b)
 
     # Construct static matrix
-    return SMatrix{M, N, Int}(Ai), SVector{M, Int}(bi), denom
+    return SMatrix{M,N,Int}(Ai), SVector{M,Int}(bi), denom
 end
 
 """
@@ -337,12 +369,12 @@ even though A is purely integer. In this case, the inverse transformation only
 maps some of the points.
 """
 function active_to_passive(A::AbstractMatrix{<:Union{Rational,Integer}},
-                           b::AbstractVector{<:Union{Rational,Integer}})
+        b::AbstractVector{<:Union{Rational,Integer}})
     return active_to_passive(Rational.(A), Rational.(b))
 end
 
 function active_to_passive(
-            A::AbstractMatrix{<:Rational}, b::AbstractVector{<:Rational})
+        A::AbstractMatrix{<:Rational}, b::AbstractVector{<:Rational})
     m, n = size(A)
     T = [A b; zero(b)' 1]
 
@@ -350,7 +382,7 @@ function active_to_passive(
     #      this yet over the Rationals).
     Tinv = inv(T)
     Ainv = Tinv[1:m, 1:n]
-    binv = Tinv[1:m, n+1]
+    binv = Tinv[1:m, n + 1]
     return Ainv, binv
 end
 
@@ -363,5 +395,5 @@ a number.
 digits_to_number(v::AbstractVector{Bool}) = _digits_to_number(Tuple(v))
 
 @inline _digits_to_number(v::Tuple{}) = 0
-@inline _digits_to_number(v::Tuple{Bool, Vararg{Bool}}) =
-    _digits_to_number(v[2:end]) << 1 | v[1]
+@inline _digits_to_number(v::Tuple{Bool,Vararg{Bool}}) = _digits_to_number(v[2:end]) << 1 |
+                                                         v[1]
