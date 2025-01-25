@@ -120,6 +120,12 @@ function affine_transform_tensors(
     # Checks
     0 <= R * max(M, N) <= 8 * sizeof(Int) ||
         throw(DomainError(R, "invalid value of the length R"))
+    
+    @show b
+    if boundary == PeriodicBoundaryConditions()
+        b = @. b % (s * (1 << R))
+    end
+    @show b
 
     # The output tensors are a collection of matrices, but their first two
     # dimensions (links) vary
@@ -151,16 +157,14 @@ function affine_transform_tensors(
     end
         @show carry
 
-    #if boundary == OpenBoundaryConditions() && maximum(abs, b) > 0
+    if boundary == OpenBoundaryConditions() && maximum(abs, b) > 0
 
         # Extend the tensors to the left until we have no more nonzero bits in b
         # This is equivalent to a larger domain.
         tensors_ext = Array{Bool,4}[]
-        activebit = boundary != OpenBoundaryConditions()
-        @show activebit
         while maximum(abs, b) > 0
             bcurr = SVector{M,Int}((copysign(b_, abs(b_)) & 1 for b_ in b))
-            new_carry, data = affine_transform_core(A, bcurr, s, carry; activebit=activebit)
+            new_carry, data = affine_transform_core(A, bcurr, s, carry; activebit=false)
             pushfirst!(tensors_ext, data)
 
             carry = new_carry
@@ -168,12 +172,7 @@ function affine_transform_tensors(
         end
         @show carry
 
-        weights =
-        if boundary == OpenBoundaryConditions()
-            map(c -> carry_weight(c, boundary), carry)
-        else
-            map(c -> all(c * 2^length(tensors_ext) .% s .== 0), carry)
-        end
+        weights = map(c -> carry_weight(c, boundary), carry)
         @show length(tensors_ext)
         @show weights
 
@@ -192,6 +191,12 @@ function affine_transform_tensors(
         else
             tensors[1] = sum(tensors[1] .* weights; dims=1)
         end
+    else
+        @show carry
+        weights = map(c -> all(c .% s .== 0), carry)
+        @show weights
+        tensors[1] = sum(tensors[1] .* weights; dims=1)
+    end
 
     return tensors, carry
 end
@@ -239,9 +244,9 @@ function affine_transform_core(
         for (x_index, x) in enumerate(all_x)
             z = A * SVector{N,Bool}(x) + b + SVector{M,Int}(c)
 
-            #@show c
-            #@show x
-            #@show z
+            @show c
+            @show x
+            @show z
 
 
             if isodd(s)
