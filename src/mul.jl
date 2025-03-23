@@ -79,7 +79,8 @@ function _asdiagonal(t, site::Index{T}; baseplev=0)::ITensor where {T<:Number}
         tensor[.., i, i] = rawdata[.., i]
     end
     return ITensor(
-        tensor, links..., ITensors.prime(site, baseplev + 1), ITensors.prime(site, baseplev)
+        tensor, links..., ITensors.prime(site, baseplev + 1), ITensors.prime(
+            site, baseplev)
     )
 end
 

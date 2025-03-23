@@ -29,11 +29,11 @@
 
     @testset "qft_mpo" for sign in [1, -1], nbit in [2, 3]
         N = 2^nbit
-    
+
         sites = siteinds("Qubit", nbit)
         M = Quantics._qft(sites; sign=sign)
         M_ref = _qft_ref(sites; sign=sign)
-    
+
         @test M ≈ M_ref
     end
 end

@@ -120,7 +120,8 @@ end
 
 @testitem "mul_tests.jl/batchedmatmul" begin
     using Test
-    import PartitionedMPSs: PartitionedMPSs, SubDomainMPS, PartitionedMPS, isprojectedat, project, Projector
+    import PartitionedMPSs: PartitionedMPSs, SubDomainMPS, PartitionedMPS, isprojectedat,
+                            project, Projector
     import Quantics
     using ITensors
     using ITensors.SiteTypes: siteinds

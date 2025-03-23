@@ -3,7 +3,7 @@ import ITensorMPS: random_mps
 using Random
 
 function _random_mpo(
-    rng::AbstractRNG, sites::AbstractVector{<:AbstractVector{Index{T}}}; linkdims::Int=1
+        rng::AbstractRNG, sites::AbstractVector{<:AbstractVector{Index{T}}}; linkdims::Int=1
 ) where {T}
     sites_ = collect(Iterators.flatten(sites))
     Ψ = random_mps(rng, sites_; linkdims)
@@ -17,7 +17,7 @@ function _random_mpo(
 end
 
 function _random_mpo(
-    sites::AbstractVector{<:AbstractVector{Index{T}}}; linkdims::Int=1
+        sites::AbstractVector{<:AbstractVector{Index{T}}}; linkdims::Int=1
 ) where {T}
     return _random_mpo(Random.default_rng(), sites; linkdims)
 end

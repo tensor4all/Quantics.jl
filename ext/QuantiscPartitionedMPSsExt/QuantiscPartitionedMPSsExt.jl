@@ -8,7 +8,8 @@ using ITensorMPS: ITensorMPS, MPS, MPO, AbstractMPS
 using ITensorMPS: findsite, linkinds, linkind, findsites
 
 import Quantics: Quantics, _find_site_allplevs, combinesites, extractdiagonal, _asdiagonal
-import PartitionedMPSs: PartitionedMPSs, SubDomainMPS, PartitionedMPS, isprojectedat, project
+import PartitionedMPSs: PartitionedMPSs, SubDomainMPS, PartitionedMPS, isprojectedat,
+                        project
 
 function Quantics.makesitediagonal(subdmps::SubDomainMPS, site::Index)
     return _makesitediagonal(subdmps, site; baseplev=0)
@@ -17,7 +18,6 @@ end
 function Quantics.makesitediagonal(subdmps::SubDomainMPS, sites::AbstractVector{Index})
     return _makesitediagonal(subdmps, sites; baseplev=0)
 end
-
 
 function Quantics.makesitediagonal(subdmps::SubDomainMPS, tag::String)
     mps_diagonal = Quantics.makesitediagonal(MPS(subdmps), tag)
@@ -38,7 +38,7 @@ function Quantics.makesitediagonal(subdmps::SubDomainMPS, tag::String)
 end
 
 function _makesitediagonal(
-    subdmps::SubDomainMPS, sites::AbstractVector{Index{IndsT}}; baseplev=0
+        subdmps::SubDomainMPS, sites::AbstractVector{Index{IndsT}}; baseplev=0
 ) where {IndsT}
     M_ = deepcopy(MPO(collect(MPS(subdmps))))
     for site in sites
@@ -52,9 +52,8 @@ function _makesitediagonal(subdmps::SubDomainMPS, site::Index; baseplev=0)
     return _makesitediagonal(subdmps, [site]; baseplev=baseplev)
 end
 
-
 function Quantics.extractdiagonal(
-    subdmps::SubDomainMPS, sites::AbstractVector{Index{IndsT}}
+        subdmps::SubDomainMPS, sites::AbstractVector{Index{IndsT}}
 ) where {IndsT}
     tensors = collect(subdmps.data)
     for i in eachindex(tensors)
@@ -96,20 +95,17 @@ function Quantics.rearrange_siteinds(partmps::PartitionedMPS, sites)
     return PartitionedMPSs.rearrange_siteinds(partmps, sites)
 end
 
-
 """
 Make the PartitionedMPS diagonal for a given site index `s` by introducing a dummy index `s'`.
 """
 function Quantics.makesitediagonal(obj::PartitionedMPS, site)
-    return PartitionedMPS([
-        _makesitediagonal(prjmps, site; baseplev=baseplev) for prjmps in values(obj)
-    ])
+    return PartitionedMPS([_makesitediagonal(prjmps, site; baseplev=baseplev)
+                           for prjmps in values(obj)])
 end
 
 function _makesitediagonal(obj::PartitionedMPS, site; baseplev=0)
-    return PartitionedMPS([
-        _makesitediagonal(prjmps, site; baseplev=baseplev) for prjmps in values(obj)
-    ])
+    return PartitionedMPS([_makesitediagonal(prjmps, site; baseplev=baseplev)
+                           for prjmps in values(obj)])
 end
 
 """
@@ -120,20 +116,19 @@ function Quantics.extractdiagonal(obj::PartitionedMPS, site)
     return PartitionedMPS([extractdiagonal(prjmps, site) for prjmps in values(obj)])
 end
 
-
 """
 By default, elementwise multiplication will be performed.
 """
 function Quantics.automul(
-    M1::PartitionedMPS,
-    M2::PartitionedMPS;
-    tag_row::String="",
-    tag_shared::String="",
-    tag_col::String="",
-    alg="naive",
-    maxdim=typemax(Int),
-    cutoff=1e-25,
-    kwargs...,
+        M1::PartitionedMPS,
+        M2::PartitionedMPS;
+        tag_row::String="",
+        tag_shared::String="",
+        tag_col::String="",
+        alg="naive",
+        maxdim=typemax(Int),
+        cutoff=1e-25,
+        kwargs...
 )
     all(length.(siteinds(M1)) .== 1) || error("M1 should have only 1 site index per site")
     all(length.(siteinds(M2)) .== 1) || error("M2 should have only 1 site index per site")
@@ -154,9 +149,11 @@ function Quantics.automul(
     sites_M1_diag = [collect(x) for x in siteinds(M1)]
     sites_M2_diag = [collect(x) for x in siteinds(M2)]
 
-    M1 = Quantics.rearrange_siteinds(M1, combinesites(sites_M1_diag, sites_row, sites_shared))
+    M1 = Quantics.rearrange_siteinds(
+        M1, combinesites(sites_M1_diag, sites_row, sites_shared))
 
-    M2 = Quantics.rearrange_siteinds(M2, combinesites(sites_M2_diag, sites_shared, sites_col))
+    M2 = Quantics.rearrange_siteinds(
+        M2, combinesites(sites_M2_diag, sites_shared, sites_col))
 
     M = PartitionedMPSs.contract(M1, M2; alg=alg, kwargs...)
 
@@ -177,7 +174,8 @@ function Quantics.automul(
             end
         end
     end
-    return PartitionedMPSs.truncate(Quantics.rearrange_siteinds(M, ressites); cutoff=cutoff, maxdim=maxdim)
+    return PartitionedMPSs.truncate(
+        Quantics.rearrange_siteinds(M, ressites); cutoff=cutoff, maxdim=maxdim)
 end
 
 function _findallsiteinds_by_tag(M::PartitionedMPS; tag=tag)

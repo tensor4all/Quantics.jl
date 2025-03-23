@@ -116,9 +116,9 @@ end
 """
 Multiply by exp(i θ x), where x = (x_1, ..., x_R)_2.
 """
-function phase_rotation(M::MPS, θ::Float64; targetsites=nothing, tag="")::MPS
+function phase_rotation(M::MPS, θ::Float64; targetsites=nothing, tag="", kwargs...)::MPS
     transformer = phase_rotation_mpo(siteinds(M), θ; targetsites=targetsites, tag=tag)
-    _apply(transformer, M)
+    _apply(transformer, M; kwargs...)
 end
 
 """

@@ -1,6 +1,7 @@
 @testitem "util.jl" begin
     using Test
-    import PartitionedMPSs: PartitionedMPSs, SubDomainMPS, PartitionedMPS, project, isprojectedat
+    import PartitionedMPSs: PartitionedMPSs, SubDomainMPS, PartitionedMPS, project,
+                            isprojectedat
     import Quantics
     using ITensors
     using ITensors.SiteTypes: siteinds

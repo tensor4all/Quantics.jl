@@ -28,12 +28,11 @@ function _qft(sites; cutoff::Float64=1e-14, sign::Int=1)
     R > 1 || error("The number of bits must be greater than 1")
 
     sites_MPO = collect.(zip(prime.(sites), sites))
-    fouriertt = QuanticsTCI.quanticsfouriermpo(R; sign = Float64(sign), normalize = true)
+    fouriertt = QuanticsTCI.quanticsfouriermpo(R; sign=Float64(sign), normalize=true)
     M = MPO(fouriertt; sites=sites_MPO)
 
     return truncate(M; cutoff)
 end
-
 
 abstract type AbstractFT end
 
@@ -129,7 +128,7 @@ function fouriertransform(M::MPS;
 
     # Phase shift from origindst
     M_result = phase_rotation(M, sign * 2π * origindst / (2.0^length(sitepos));
-        targetsites=target_sites)
+        targetsites=target_sites, kwargs...)
 
     # Apply QFT
     M_result = _apply(MQ, M_result; kwargs...)
@@ -141,7 +140,7 @@ function fouriertransform(M::MPS;
 
     # Phase shift from originsrc
     M_result = phase_rotation(M_result, sign * 2π * originsrc / (2.0^length(sitepos));
-        targetsites=sitesdst)
+        targetsites=sitesdst, kwargs...)
 
     M_result *= exp(sign * im * 2π * originsrc * origindst / 2.0^length(sitepos))
 
