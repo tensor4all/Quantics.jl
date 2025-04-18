@@ -131,7 +131,7 @@ end
 By default, elementwise multiplication will be performed.
 """
 function automul(M1::MPS, M2::MPS; tag_row::String="", tag_shared::String="",
-        tag_col::String="", alg="naive", kwargs...)
+        tag_col::String="", alg="naive", cutoff=1e-30, kwargs...)
     if in(:maxbonddim, keys(kwargs))
         error("Illegal keyward parameter: maxbonddim. Use maxdim instead!")
     end
@@ -153,13 +153,13 @@ function automul(M1::MPS, M2::MPS; tag_row::String="", tag_shared::String="",
     M1_, M2_ = preprocess(matmul, M1_, M2_)
     M1_, M2_ = preprocess(ewmul, M1_, M2_)
 
-    M = FastMPOContractions.contract_mpo_mpo(M1_, M2_; alg=alg, kwargs...)
+    M = FastMPOContractions.contract_mpo_mpo(M1_, M2_; alg=alg, cutoff=cutoff, kwargs...)
 
     M = Quantics.postprocess(matmul, M)
     M = Quantics.postprocess(ewmul, M)
 
     if in(:maxdim, keys(kwargs))
-        truncate!(M; maxdim=kwargs[:maxdim])
+        truncate!(M; maxdim=kwargs[:maxdim], cutoff=cutoff)
     end
 
     return asMPS(M)

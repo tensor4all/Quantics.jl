@@ -169,13 +169,14 @@ end
     end
 
     @testset "PartitionedMPS" begin
-        @testset "batchedmatmul" for T in [Float64]
+        @testset "batchedmatmul" for T in [Float64, ComplexF64]
             """
             C(x, z, k) = sum_y A(x, y, k) * B(y, z, k)
             """
             nbit = 2
             D = 2
             cutoff = 1e-25
+            maxdim = typemax(Int)
             sx = [Index(2, "Qubit,x=$n") for n in 1:nbit]
             sy = [Index(2, "Qubit,y=$n") for n in 1:nbit]
             sz = [Index(2, "Qubit,z=$n") for n in 1:nbit]
@@ -213,10 +214,10 @@ end
             @test b ≈ MPS(b_)
 
             ab = Quantics.automul(
-                a_, b_; tag_row="x", tag_shared="y", tag_col="z", alg="fit", cutoff
+                a_, b_; tag_row="x", tag_shared="y", tag_col="z", alg="fit", cutoff, maxdim
             )
             ab_ref = Quantics.automul(
-                a, b; tag_row="x", tag_shared="y", tag_col="z", alg="fit", cutoff
+                a, b; tag_row="x", tag_shared="y", tag_col="z", alg="fit", cutoff, maxdim
             )
 
             @test MPS(ab)≈ab_ref rtol=10 * sqrt(cutoff)
