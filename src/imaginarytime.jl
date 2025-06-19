@@ -20,21 +20,27 @@ function to_wn(stat::Statistics, gtau::MPS, beta::Float64; sitessrc=nothing, tag
         sitesdst=nothing, kwargs...)::MPS
     sitepos, _ = _find_target_sites(gtau; sitessrc=sitessrc, tag=tag)
     nqbit_t = length(sitepos)
-    originwn = 0.5 * (-2.0^nqbit_t + _stat_shift(stat))
+    p_back = precision(BigFloat)
+    setprecision(BigFloat, 256)
+    originwn = 0.5 * (-BigFloat(2)^BigFloat(nqbit_t) + _stat_shift(stat))
     giv = fouriertransform(gtau; tag=tag, sitessrc=sitessrc, sitesdst=sitesdst,
         origindst=originwn, kwargs...)
     giv *= (beta * 2^(-nqbit_t / 2))
+    setprecision(BigFloat, p_back)
     return giv
 end
 
 function to_tau(stat::Statistics, giv::MPS, beta::Float64; sitessrc=nothing, tag="",
         sitesdst=nothing, kwargs...)::MPS
     sitepos, _ = _find_target_sites(giv; sitessrc=sitessrc, tag=tag)
+    p_back = precision(BigFloat)
+    setprecision(BigFloat, 256)
     nqbit_t = length(sitepos)
-    originwn = 0.5 * (-2.0^nqbit_t + _stat_shift(stat))
+    originwn = 0.5 * (-BigFloat(2)^BigFloat(nqbit_t) + _stat_shift(stat))
     gtau = fouriertransform(giv; sign=-1, tag=tag, sitessrc=sitessrc, sitesdst=sitesdst,
         originsrc=originwn, kwargs...)
     gtau *= ((2^(nqbit_t / 2)) / beta)
+    setprecision(BigFloat, p_back)
     return gtau
 end
 

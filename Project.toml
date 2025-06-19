@@ -38,6 +38,10 @@ Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 ReTestItems = "817f1d60-ba6b-4fd5-9520-3cf149f6a823"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+TensorCrossInterpolation = "b261b2ec-6378-4871-b32e-9173bb050604"
+QuanticsTCI = "b11687fd-3a1c-4c41-97d0-998ab401d50e"
+QuanticsGrids = "634c7f73-3e90-4749-a1bd-001b8efc642d"
+SparseIR = "4fe2279e-80f0-4adb-8463-ee114ff56b7d"
 
 [targets]
-test = ["Test", "Random", "ReTestItems", "Aqua", "PartitionedMPSs"]
+test = ["Test", "Random", "ReTestItems", "Aqua", "PartitionedMPSs", "TensorCrossInterpolation", "QuanticsTCI", "QuanticsGrids", "SparseIR"]

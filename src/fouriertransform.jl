@@ -19,7 +19,7 @@ We denote the input and output MPS's by ``X`` and ``Y``, respectively.
 * ``Y(y_N, ..., y_1) = Y_1(y_N) ... Y_N (y_1)``.
 
 """
-function _qft(sites; cutoff::Float64=1e-14, sign::Int=1)
+function _qft(sites; cutoff::Float64=1e-25, sign::Int=1)
     if !all(dim.(sites) .== 2)
         error("All siteinds for qft must has Qubit tag")
     end
@@ -108,8 +108,8 @@ function fouriertransform(M::MPS;
         tag::String="",
         sitessrc=nothing,
         sitesdst=nothing,
-        originsrc::Float64=0.0,
-        origindst::Float64=0.0,
+        originsrc::Real=0.0,
+        origindst::Real=0.0,
         cutoff_MPO=1e-25, kwargs...)
     sites = siteinds(M)
     sitepos, target_sites = _find_target_sites(M; sitessrc=sitessrc, tag=tag)
@@ -122,12 +122,15 @@ function fouriertransform(M::MPS;
         error("Invalid target_sites")
     end
 
+    p_back = precision(BigFloat)
+    setprecision(BigFloat, 256)
+
     # Prepare MPO for QFT
     MQ_ = _qft(target_sites; sign=sign, cutoff=cutoff_MPO)
     MQ = matchsiteinds(MQ_, sites)
 
     # Phase shift from origindst
-    M_result = phase_rotation(M, sign * 2π * origindst / (2.0^length(sitepos));
+    M_result = phase_rotation(M, sign * 2π * BigFloat(origindst) / (BigFloat(2)^length(sitepos));
         targetsites=target_sites, kwargs...)
 
     # Apply QFT
@@ -139,10 +142,13 @@ function fouriertransform(M::MPS;
     end
 
     # Phase shift from originsrc
-    M_result = phase_rotation(M_result, sign * 2π * originsrc / (2.0^length(sitepos));
+    M_result = phase_rotation(M_result, sign * 2π * BigFloat(originsrc) / (BigFloat(2)^length(sitepos));
         targetsites=sitesdst, kwargs...)
 
-    M_result *= exp(sign * im * 2π * originsrc * origindst / 2.0^length(sitepos))
+    tmp = Float64(mod(sign * 2π * BigFloat(originsrc) * BigFloat(origindst) / BigFloat(2)^length(sitepos), 2 * π))
+    M_result *= exp(im * tmp)
+
+    setprecision(BigFloat, p_back)
 
     return M_result
 end

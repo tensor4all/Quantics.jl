@@ -116,7 +116,7 @@ end
 """
 Multiply by exp(i θ x), where x = (x_1, ..., x_R)_2.
 """
-function phase_rotation(M::MPS, θ::Float64; targetsites=nothing, tag="", kwargs...)::MPS
+function phase_rotation(M::MPS, θ::Real; targetsites=nothing, tag="", kwargs...)::MPS
     transformer = phase_rotation_mpo(siteinds(M), θ; targetsites=targetsites, tag=tag)
     _apply(transformer, M; kwargs...)
 end
@@ -126,18 +126,22 @@ Create an MPO for multiplication by `exp(i θ x)`, where `x = (x_1, ..., x_R)_2`
 
 `sites`: site indices for `x_1`, `x_2`, ..., `x_R`.
 """
-function phase_rotation_mpo(sites::AbstractVector{Index{T}}, θ::Float64;
+function phase_rotation_mpo(sites::AbstractVector{Index{T}}, θ::Real;
         targetsites=nothing, tag="")::MPO where {T}
     _, target_sites = _find_target_sites(sites; sitessrc=targetsites, tag=tag)
     transformer = _phase_rotation_mpo(target_sites, θ)
     return matchsiteinds(transformer, sites)
 end
 
-function _phase_rotation_mpo(sites::AbstractVector{Index{T}}, θ::Float64)::MPO where {T}
+function _phase_rotation_mpo(sites::AbstractVector{Index{T}}, θ::Real)::MPO where {T}
     R = length(sites)
     tensors = [ITensor(true) for _ in 1:R]
+    θ_mod = mod(θ, 2π)
+    p_back = precision(BigFloat)
+    setprecision(BigFloat, 256)
     for n in 1:R
-        tensors[n] = ITensors.SiteTypes.op("Phase", sites[n]; ϕ=θ * 2^(R - n))
+        tmp = Float64(mod(θ_mod * BigFloat(2)^BigFloat(R - n), 2 * π))
+        tensors[n] = ITensors.SiteTypes.op("Phase", sites[n]; ϕ=tmp)
     end
     links = [Index(1, "Link,l=$l") for l in 1:(R - 1)]
     tensors[1] = ITensor(
@@ -149,6 +153,7 @@ function _phase_rotation_mpo(sites::AbstractVector{Index{T}}, θ::Float64)::MPO 
     tensors[end] = ITensor(
         Array(tensors[end], sites[end]', sites[end]), links[end], sites[end], sites[end]')
 
+    setprecision(BigFloat, p_back)
     return MPO(tensors)
 end
 
