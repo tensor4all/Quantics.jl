@@ -42,4 +42,4 @@ TensorCrossInterpolation = "b261b2ec-6378-4871-b32e-9173bb050604"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test", "Random", "ReTestItems", "Aqua", "TensorCrossInterpolation", "QuanticsTCI", "QuanticsGrids", "SparseIR"]
+test = ["Test", "Random", "ReTestItems", "Aqua", "PartitionedMPSs", "TensorCrossInterpolation", "QuanticsTCI", "QuanticsGrids", "SparseIR"]
