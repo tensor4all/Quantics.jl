@@ -13,7 +13,6 @@ using StaticArrays
 import SparseArrays: sparse
 
 import QuanticsTCI
-import TCIITensorConversion
 import FastMPOContractions
 
 using EllipsisNotation

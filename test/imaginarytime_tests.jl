@@ -11,7 +11,6 @@
     import QuanticsGrids as QG
     import TensorCrossInterpolation as TCI
     import QuanticsTCI: quanticscrossinterpolate
-    import TCIITensorConversion
 
     function _test_data_imaginarytime(nbit, β)
         ω = 0.5
