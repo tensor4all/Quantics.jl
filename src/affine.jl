@@ -112,11 +112,16 @@ function affine_transform_tensors(
     # dimensions (links) vary
     tensors = Vector{Array{Bool,4}}(undef, R)
 
+    # Track sign separately and work with absolute value so that
+    # right-shifting always terminates (fixes negative b handling).
+    bsign = sign.(b)
+    b = abs.(b)
+
     # The initial carry is zero
     carry = [zero(SVector{M,Int})]
     for r in R:-1:1
         # Figure out the current bit to add from the shift term and shift
-        bcurr = SVector{M,Int}((copysign(b_, abs(b_)) & 1 for b_ in b))
+        bcurr = (b .& 1) .* bsign
 
         # Get tensor.
         new_carry, data = affine_transform_core(A, bcurr, s, carry)
@@ -138,12 +143,12 @@ function affine_transform_tensors(
         b = @. b >> 1
     end
 
-    if boundary == OpenBoundaryConditions() && maximum(abs, b) > 0
+    if boundary == OpenBoundaryConditions() && maximum(b) > 0
         # Extend the tensors to the left until we have no more nonzero bits in b
         # This is equivalent to a larger domain.
         tensors_ext = Array{Bool,4}[]
-        while maximum(abs, b) > 0
-            bcurr = SVector{M,Int}((copysign(b_, abs(b_)) & 1 for b_ in b))
+        while maximum(b) > 0
+            bcurr = (b .& 1) .* bsign
             new_carry, data = affine_transform_core(A, bcurr, s, carry; activebit=false)
             pushfirst!(tensors_ext, data)
 
@@ -215,6 +220,10 @@ function affine_transform_core(
                 # if s is odd, then there is a unique y which solves satisfies
                 # above condition (simply the lowest bit)
                 y = @. Bool(z & 1)
+                if !activebit && any(y)
+                    # y must be zero when bits are inactive; skip dead-end carry
+                    continue
+                end
                 y_index = digits_to_number(y) + 1
 
                 # Correct z and compute carry
