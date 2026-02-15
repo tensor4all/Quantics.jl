@@ -158,4 +158,28 @@
             end
         end
     end
+
+    @testset "degenerate_rational (issue #46)" begin
+        # This transformation has no valid integer mappings because
+        # A_int has all even entries while b_int[3] is odd, so
+        # A_int*x + b_int can never be divisible by the even denominator s=42.
+        A = [1 0 0; -1//7 6//7 6//7; -10//21 6//7 -1//7]
+        b = [0, 27 // 7, 61 // 14]
+        R = 3
+
+        M, N = size(A)
+        bc = Quantics.OpenBoundaryConditions()
+
+        # The full matrix should be all zeros (no valid mappings)
+        T = Quantics.affine_transform_matrix(R, A, b, bc)
+        @test nnz(T) == 0
+
+        # The MPO construction should not crash (was DivideError before fix)
+        # and should emit a warning about no valid mappings.
+        mpo = @test_warn "no valid integer mappings" Quantics.affine_transform_mpo(
+            outsite[1:R, 1:M], insite[1:R, 1:N], A, b, bc)
+        Trec = Quantics.affine_mpo_to_matrix(
+            outsite[1:R, 1:M], insite[1:R, 1:N], mpo)
+        @test T == Trec
+    end
 end
