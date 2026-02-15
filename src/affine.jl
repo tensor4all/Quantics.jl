@@ -143,6 +143,16 @@ function affine_transform_tensors(
         b = @. b >> 1
     end
 
+    # If the carry set is empty, no valid integer mappings exist for this
+    # transformation. Return zero tensors forming a valid (zero) MPO.
+    if isempty(carry)
+        @warn "Affine transformation has no valid integer mappings; returning zero MPO."
+        for r in 1:R
+            tensors[r] = zeros(Bool, 1, 1, 1 << M, 1 << N)
+        end
+        return tensors, carry
+    end
+
     if boundary == OpenBoundaryConditions() && maximum(b) > 0
         # Extend the tensors to the left until we have no more nonzero bits in b
         # This is equivalent to a larger domain.
@@ -154,6 +164,15 @@ function affine_transform_tensors(
 
             carry = new_carry
             b = @. b >> 1
+            isempty(carry) && break
+        end
+
+        if isempty(carry)
+            @warn "Affine transformation has no valid integer mappings; returning zero MPO."
+            for r in 1:R
+                tensors[r] = zeros(Bool, 1, 1, 1 << M, 1 << N)
+            end
+            return tensors, carry
         end
 
         weights = map(c -> carry_weight(c, boundary), carry)
